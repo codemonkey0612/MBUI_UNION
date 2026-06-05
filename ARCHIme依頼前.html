@@ -1,0 +1,2162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARCHIme | 建築タイプ診断</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #B8EDF5 0%, #8DDCEE 18%, #5BBFDF 42%, #3BA4CC 68%, #2A8CB8 100%);
+    font-family: 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* ── Animations ── */
+  @keyframes floatUp {
+    0%   { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-110vh) scale(0.3); opacity: 0; }
+  }
+  @keyframes swimAcross {
+    0%   { transform: translateX(-60px) scaleX(1); opacity: 0.2; }
+    48%  { opacity: 0.2; }
+    49%  { transform: translateX(110vw) scaleX(1); opacity: 0; }
+    50%  { transform: translateX(110vw) scaleX(-1); opacity: 0; }
+    51%  { opacity: 0.2; }
+    100% { transform: translateX(-60px) scaleX(-1); opacity: 0.2; }
+  }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeSlideOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-24px); }
+  }
+  @keyframes pulseGlow {
+    0%, 100% { filter: drop-shadow(0 0 20px rgba(255,240,100,.4)); }
+    50%       { filter: drop-shadow(0 0 50px rgba(255,240,100,.75)); }
+  }
+  @keyframes wave {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  @keyframes reveal {
+    from { opacity: 0; transform: translateY(40px) scale(.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes caustic {
+    0%, 100% { opacity: .05; transform: scale(1) rotate(0deg); }
+    50%       { opacity: .10; transform: scale(1.05) rotate(3deg); }
+  }
+  @keyframes archDraw {
+    0%   { stroke-dashoffset: 1200; opacity: 0; }
+    10%  { opacity: 1; }
+    80%  { stroke-dashoffset: 0; opacity: .5; }
+    100% { stroke-dashoffset: 0; opacity: 0; }
+  }
+  @keyframes archFade {
+    0%   { opacity: 0; }
+    15%  { opacity: .45; }
+    80%  { opacity: .45; }
+    100% { opacity: 0; }
+  }
+
+  /* ── Fixed decorations ── */
+  #deco-layer {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+  }
+  .bubble {
+    position: absolute;
+    border-radius: 50%;
+    animation: floatUp linear infinite;
+  }
+  .fish {
+    position: absolute;
+    animation: swimAcross linear infinite;
+  }
+  #arch-section-svg {
+    position: absolute; left: -20px; top: 10%;
+    animation: archFade 18s 2s ease-in-out infinite;
+  }
+  #arch-section-svg g {
+    animation: archDraw 18s 2s ease-in-out infinite;
+  }
+  #arch-plan-svg {
+    position: absolute; right: -30px; bottom: 12%;
+    animation: archFade 22s 8s ease-in-out infinite;
+  }
+  #arch-plan-svg g {
+    animation: archDraw 22s 8s ease-in-out infinite;
+  }
+  #north-mark { position: absolute; right: 8%; top: 25%; opacity: .1; }
+  #dim-mark   { position: absolute; left: 5%; bottom: 30%; opacity: .12; }
+
+  #caustic-overlay {
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(ellipse 80px 60px at 20% 30%, rgba(255,255,255,.08) 0%, transparent 70%),
+      radial-gradient(ellipse 60px 80px at 70% 15%, rgba(255,255,255,.06) 0%, transparent 70%),
+      radial-gradient(ellipse 100px 50px at 50% 60%, rgba(255,255,255,.05) 0%, transparent 70%),
+      radial-gradient(ellipse 70px 90px at 85% 75%, rgba(255,255,255,.07) 0%, transparent 70%);
+    animation: caustic 6s ease-in-out infinite;
+    pointer-events: none; z-index: 0;
+  }
+  #wave1 {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 140px; overflow: hidden; z-index: 0; opacity: .28; pointer-events: none;
+  }
+  #wave1 svg { width: 200%; animation: wave 10s linear infinite; }
+  #wave2 {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 90px; overflow: hidden; z-index: 0; opacity: .18; pointer-events: none;
+  }
+  #wave2 svg { width: 200%; animation: wave 16s linear infinite reverse; }
+
+  /* ── Layout ── */
+  #app { position: relative; z-index: 1; }
+
+  .page {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 40px 20px 100px;
+  }
+  .page.quiz-page { justify-content: flex-start; padding-top: 32px; }
+
+  .card-wrap { width: 100%; max-width: 600px; }
+
+  /* ── Glass card ── */
+  .glass {
+    background: rgba(255,255,255,.55);
+    border: 1px solid rgba(255,255,255,.75);
+    border-radius: 24px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .glass-light {
+    background: rgba(255,255,255,.35);
+    border: 1px solid rgba(255,255,255,.6);
+    border-radius: 14px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* ── Intro ── */
+  #intro-inner {
+    text-align: center; max-width: 520px;
+    animation: fadeSlideIn .8s ease forwards;
+  }
+  #intro-emoji { font-size: 80px; margin-bottom: 16px; filter: drop-shadow(0 0 24px rgba(100,200,240,.6)); }
+  #intro-badge {
+    font-size: 11px; letter-spacing: 6px; color: rgba(255,255,255,.85);
+    text-transform: uppercase; margin-bottom: 16px; font-weight: 600;
+  }
+  #intro-title {
+    font-size: clamp(28px,6vw,48px); font-weight: 800;
+    background: linear-gradient(135deg,#fff 0%,#E8F8FF 40%,#FFE88A 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2; margin-bottom: 12px; letter-spacing: -1px;
+  }
+  #intro-sub {
+    font-size: 13px; color: rgba(255,255,255,.75); letter-spacing: 4px;
+    margin-bottom: 40px; text-transform: uppercase;
+  }
+  #intro-desc {
+    font-size: 15px; color: #1a3a50; line-height: 1.9; margin-bottom: 48px;
+    text-align: left; padding: 24px; border-radius: 16px;
+    background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.7);
+    backdrop-filter: blur(16px);
+  }
+  #intro-desc span { color: #0077B6; font-weight: 700; }
+  #btn-start {
+    background: linear-gradient(135deg,#FFD93D,#FF9500);
+    border: none; border-radius: 50px;
+    padding: 18px 56px; font-size: 16px; font-weight: 800;
+    color: #1a2e40; letter-spacing: 2px; cursor: pointer;
+    box-shadow: 0 8px 32px rgba(255,200,50,.4);
+    transition: all .3s ease;
+    font-family: inherit;
+  }
+  #btn-start:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(255,200,50,.55); }
+  #intro-note { font-size: 12px; color: rgba(255,255,255,.6); margin-top: 24px; }
+
+  /* ── Quiz ── */
+  #quiz-header { width: 100%; max-width: 600px; margin-bottom: 32px; }
+  #quiz-nav {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+  }
+  #btn-back {
+    background: none; border: none; font-size: 13px; letter-spacing: 1px;
+    cursor: pointer; font-family: inherit; transition: color .2s;
+    color: rgba(255,255,255,.5);
+  }
+  #btn-back:disabled { color: rgba(255,255,255,.2); cursor: default; }
+  #quiz-counter { font-size: 13px; color: rgba(255,255,255,.4); letter-spacing: 2px; }
+  #progress-track {
+    height: 4px; background: rgba(255,255,255,.2); border-radius: 2px; overflow: hidden;
+  }
+  #progress-fill {
+    height: 100%; background: linear-gradient(90deg,#FFD93D,#FF9500);
+    transition: width .4s ease; box-shadow: 0 0 10px rgba(255,220,80,.8);
+    width: 0%;
+  }
+
+  #question-card {
+    animation: fadeSlideIn .4s ease forwards;
+  }
+  #question-card.slide-out {
+    animation: fadeSlideOut .3s ease forwards;
+  }
+
+  .q-outer {
+    padding: 40px 32px; margin-bottom: 20px;
+  }
+  #q-label { font-size: 11px; color: #0077B6; letter-spacing: 4px; margin-bottom: 32px; text-transform: uppercase; font-weight: 700; }
+
+  .ab-card {
+    border-radius: 16px; padding: 20px 24px; margin-bottom: 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .ab-card.a-card {
+    background: rgba(0,140,200,.1); border: 1px solid rgba(0,140,200,.25);
+  }
+  .ab-card.b-card {
+    background: rgba(255,200,60,.1); border: 1px solid rgba(255,200,60,.25);
+  }
+  .ab-badge {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .a-card .ab-badge { background: rgba(0,140,200,.2); color: #005f90; border: 1px solid rgba(0,140,200,.4); }
+  .b-card .ab-badge { background: rgba(200,140,0,.15); color: #7a4500; border: 1px solid rgba(200,140,0,.35); }
+  .ab-text { font-size: 14px; color: #1a3a50; line-height: 1.8; }
+
+  .ab-divider { text-align: center; color: rgba(0,80,130,.3); font-size: 18px; margin: 4px 0; }
+
+  .opts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .opt-btn {
+    padding: 16px 24px; border-radius: 14px; text-align: left;
+    font-size: 14px; letter-spacing: .5px; cursor: pointer;
+    display: flex; align-items: center; gap: 12px;
+    transition: all .25s ease; font-family: inherit;
+    background: rgba(255,255,255,.35); border: 1px solid rgba(255,255,255,.6);
+    color: #1a3a50; font-weight: 400;
+    backdrop-filter: blur(12px);
+  }
+  .opt-btn:hover { transform: translateX(4px); }
+  .opt-btn.selected-a1 { background: rgba(255,255,255,.75); border-color: rgba(0,140,200,.6); color: #004d7a; font-weight: 700; box-shadow: 0 4px 20px rgba(0,140,200,.3); }
+  .opt-btn.selected-a2 { background: rgba(255,255,255,.55); border-color: rgba(0,140,200,.35); color: #1a3a50; font-weight: 700; }
+  .opt-btn.selected-b2 { background: rgba(255,255,255,.55); border-color: rgba(200,130,0,.35); color: #4a3000; font-weight: 700; }
+  .opt-btn.selected-b1 { background: rgba(255,255,255,.75); border-color: rgba(200,140,0,.6); color: #4a3000; font-weight: 700; box-shadow: 0 4px 20px rgba(200,140,0,.3); }
+  .opt-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(0,100,160,.3); transition: background .2s;
+  }
+  .opt-btn.selected-a1 .opt-dot,
+  .opt-btn.selected-a2 .opt-dot { background: rgba(0,140,200,.6); }
+  .opt-btn.selected-b1 .opt-dot,
+  .opt-btn.selected-b2 .opt-dot { background: rgba(200,140,0,.6); }
+
+  #btn-next {
+    width: 100%; border: none; border-radius: 50px;
+    padding: 18px; font-size: 15px; font-weight: 800; letter-spacing: 2px;
+    cursor: pointer; transition: all .3s ease; font-family: inherit;
+    background: rgba(255,255,255,.2); color: rgba(255,255,255,.35);
+  }
+  #btn-next.active {
+    background: linear-gradient(135deg,#FFD93D,#FF9500); color: #003060;
+    box-shadow: 0 8px 24px rgba(255,220,80,.5);
+  }
+  #btn-next.active:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(255,220,80,.6); }
+
+  /* ── Result ── */
+  #result-page { opacity: 0; transition: opacity .8s ease; }
+  #result-page.visible { opacity: 1; }
+
+  #result-header { text-align: center; margin-bottom: 32px; animation: reveal .7s ease forwards; }
+  #result-arch-label { font-size: 11px; letter-spacing: 6px; color: rgba(255,255,255,.85); text-transform: uppercase; margin-bottom: 16px; font-weight: 600; }
+  #result-emoji { width: 420px; height: 420px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 180px; background: none; border: none; box-shadow: none; animation: none; overflow: visible; }
+  .result-character-image { width: 360px; max-width: 100%; height: auto; object-fit: contain; display: block; filter: none; background: transparent; box-shadow: none; border: none; }
+  #result-code-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.8);
+    border-radius: 50px; padding: 8px 24px; margin-bottom: 16px;
+    backdrop-filter: blur(12px);
+  }
+  #result-code-badge span { font-size: 20px; font-weight: 800; color: #0077B6; letter-spacing: 4px; }
+  #result-name {
+    font-size: clamp(24px,5vw,36px); font-weight: 800;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 8px;
+  }
+  #result-en { font-size: 13px; color: rgba(255,255,255,.75); letter-spacing: 2px; margin-bottom: 16px; }
+  #result-tagline {
+    font-size: 16px; color: #1a3a50; font-weight: 600; line-height: 1.7;
+    background: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.8);
+    border-radius: 12px; padding: 14px 20px; backdrop-filter: blur(16px);
+  }
+
+  .result-card { padding: 28px; margin-bottom: 16px; animation: reveal .7s ease both; }
+  .result-label { font-size: 11px; letter-spacing: 4px; color: #0077B6; margin-bottom: 16px; font-weight: 700; }
+  .result-text { font-size: 14px; color: #1a3a50; line-height: 1.9; }
+
+  .sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; animation: reveal .7s .2s ease both; }
+  .sw-card { padding: 24px; backdrop-filter: blur(12px); border-radius: 20px; }
+  .sw-card.strength-card { background: rgba(255,255,255,.55); border: 1px solid rgba(0,160,200,.3); }
+  .sw-card.weakness-card { background: rgba(255,255,255,.55); border: 1px solid rgba(200,140,0,.25); }
+  .sw-label-s { font-size: 11px; letter-spacing: 3px; color: #0077B6; margin-bottom: 16px; font-weight: 700; }
+  .sw-label-w { font-size: 11px; letter-spacing: 3px; color: #B8860B; margin-bottom: 16px; font-weight: 700; }
+  .sw-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+  .sw-item span:first-child { font-size: 10px; margin-top: 5px; flex-shrink: 0; }
+  .sw-item-text { font-size: 13px; line-height: 1.5; }
+  .strength-card .sw-item span:first-child { color: #0099CC; }
+  .strength-card .sw-item-text { color: #1a3a50; }
+  .weakness-card .sw-item span:first-child { color: #C8960C; }
+  .weakness-card .sw-item-text { color: #3a2800; }
+
+  .anecdote-item {
+    font-size: 13px; color: #1a3a50; line-height: 1.7;
+    padding: 8px 0; border-bottom: 1px solid rgba(0,80,130,.1);
+  }
+  .anecdote-item:last-child { border-bottom: none; }
+
+  .career-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .career-tag {
+    background: rgba(0,120,180,.12); border: 1px solid rgba(0,120,180,.3);
+    border-radius: 50px; padding: 8px 16px;
+    font-size: 12px; color: #005580; letter-spacing: .5px; font-weight: 600;
+  }
+
+  #btn-restart {
+    width: 100%; background: rgba(255,255,255,.4); border: 1px solid rgba(255,255,255,.65);
+    border-radius: 50px; padding: 18px; font-size: 14px; font-weight: 600;
+    color: #1a3a50; cursor: pointer; letter-spacing: 2px;
+    transition: background .3s ease; font-family: inherit;
+    backdrop-filter: blur(8px);
+  }
+  #btn-restart:hover { background: rgba(255,255,255,.6); }
+
+  /* responsive */
+  @media (max-width: 480px) {
+    .sw-grid { grid-template-columns: 1fr; }
+    .q-outer { padding: 28px 20px; }
+  }
+
+  .axis-block { margin-top: 18px; }
+  .axis-block:first-child { margin-top: 0; }
+  .axis-title { font-size: 13px; letter-spacing: .08em; color: rgba(20,58,80,.72); margin-bottom: 8px; }
+  .axis-bar { display: grid; grid-template-columns: 62px 1fr 62px; gap: 10px; align-items: center; }
+  .axis-left, .axis-right { font-size: 11px; text-align: center; color: rgba(20,58,80,.72); }
+  .axis-meter { position: relative; height: 10px; border-radius: 999px; background: rgba(255,255,255,.35); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.08); }
+  .axis-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: linear-gradient(90deg, rgba(58,164,204,.95), rgba(255,206,102,.85)); }
+  .axis-score { margin-top: 5px; font-size: 11px; color: rgba(20,58,80,.62); text-align: right; }
+  .compat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+  .compat-card { margin-top: 0; }
+  .detail-list, .compat-list { display: grid; gap: 10px; }
+  .detail-item, .compat-item { background: rgba(255,255,255,.28); border: 1px solid rgba(255,255,255,.26); border-radius: 16px; padding: 14px 16px; color: #17394f; line-height: 1.7; }
+  .detail-item::before { content: "•"; margin-right: 8px; color: rgba(58,164,204,.9); }
+  .compat-item strong { display: block; margin-bottom: 6px; color: #123247; font-size: 14px; }
+  .compat-item small { display: block; margin-top: 6px; color: rgba(20,58,80,.75); }
+  .share-section { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+  .share-btn { appearance: none; border: none; border-radius: 999px; padding: 14px 20px; font-size: 14px; font-weight: 700; letter-spacing: .04em; color: #fff; cursor: pointer; box-shadow: 0 10px 24px rgba(11,17,24,.18); transition: transform .2s ease, opacity .2s ease; }
+  .share-btn:hover { transform: translateY(-1px); opacity: .92; }
+  .share-btn:active { transform: translateY(0); }
+  .share-btn.x { background: linear-gradient(135deg, #0b1118, #283746); }
+  .share-btn.line { background: linear-gradient(135deg, #06C755, #05a948); }
+  .share-btn.instagram { background: linear-gradient(135deg, #f09433, #e6683c 30%, #dc2743 60%, #bc1888); }
+  .share-btn.save { background: linear-gradient(135deg, #3ba4cc, #1a3a50); }
+  #share-status { width: 100%; margin-top: 6px; font-size: 12px; color: rgba(255,255,255,.72); text-align: center; min-height: 1.2em; }
+
+  .share-card-canvas { position: fixed; left: -99999px; top: 0; width: 1080px; height: 1350px; pointer-events: none; }
+  .share-card-stage { width: 1080px; height: 1350px; position: relative; overflow: hidden; font-family: 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif; background: linear-gradient(180deg, #B8EDF5 0%, #8DDCEE 18%, #5BBFDF 42%, #3BA4CC 68%, #2A8CB8 100%); }
+  .share-card-stage * { box-sizing: border-box; }
+  .share-card-bubble { position: absolute; border-radius: 999px; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.22); }
+  .share-card-shell { position: absolute; inset: 70px; border-radius: 48px; background: rgba(255,255,255,.20); border: 1px solid rgba(255,255,255,.45); backdrop-filter: blur(0px); padding: 68px 64px; }
+  .share-card-brand { font-size: 34px; font-weight: 800; color: rgba(255,255,255,.94); letter-spacing: .20em; text-transform: uppercase; }
+  .share-card-sub { margin-top: 14px; font-size: 22px; color: rgba(255,255,255,.82); letter-spacing: .10em; }
+  .share-card-code { display: inline-flex; margin-top: 42px; padding: 10px 18px; border-radius: 999px; background: rgba(255,255,255,.24); border: 1px solid rgba(255,255,255,.48); color: rgba(255,255,255,.92); font-size: 22px; letter-spacing: .30em; font-weight: 700; }
+  .share-card-emoji { margin-top: 54px; font-size: 160px; line-height: 1; filter: drop-shadow(0 18px 28px rgba(26,58,80,.18)); }
+  .share-card-name { margin-top: 26px; font-size: 72px; line-height: 1.15; font-weight: 900; letter-spacing: -.03em; color: #fff; }
+  .share-card-en { margin-top: 18px; font-size: 28px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.88); }
+  .share-card-tagline { margin-top: 34px; font-size: 36px; line-height: 1.6; color: #17394f; font-weight: 700; background: rgba(255,255,255,.70); border-radius: 28px; padding: 28px 34px; }
+  .share-card-bar-wrap { margin-top: 44px; display: grid; gap: 18px; }
+  .share-card-axis { background: rgba(255,255,255,.26); border: 1px solid rgba(255,255,255,.38); border-radius: 24px; padding: 18px 22px; }
+  .share-card-axis-head { display: flex; justify-content: space-between; font-size: 22px; color: #17394f; font-weight: 700; margin-bottom: 10px; }
+  .share-card-meter { height: 18px; border-radius: 999px; background: rgba(255,255,255,.42); overflow: hidden; position: relative; }
+  .share-card-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: linear-gradient(90deg, rgba(58,164,204,.95), rgba(255,206,102,.92)); }
+  .share-card-footer { position: absolute; left: 64px; right: 64px; bottom: 58px; display: flex; justify-content: space-between; align-items: center; color: rgba(255,255,255,.88); font-size: 22px; letter-spacing: .08em; }
+  .share-card-hash { font-weight: 700; }
+  @media (max-width: 780px) {
+    .compat-grid { grid-template-columns: 1fr; }
+    .axis-bar { grid-template-columns: 56px 1fr 56px; gap: 8px; }
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ── Fixed decoration layer ── -->
+<div id="deco-layer">
+  <!-- Blueprint grid -->
+  <svg width="100%" height="100%" style="position:absolute;top:0;left:0;opacity:.07">
+    <defs>
+      <pattern id="sg" width="24" height="24" patternUnits="userSpaceOnUse">
+        <path d="M24 0L0 0 0 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width=".4"/>
+      </pattern>
+      <pattern id="lg" width="120" height="120" patternUnits="userSpaceOnUse">
+        <rect width="120" height="120" fill="url(#sg)"/>
+        <path d="M120 0L0 0 0 120" fill="none" stroke="rgba(255,255,255,1)" stroke-width=".8"/>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#lg)"/>
+  </svg>
+
+  <!-- Animated section drawing -->
+  <svg id="arch-section-svg" width="340" height="400" viewBox="0 0 340 400">
+    <g stroke="rgba(255,255,255,.7)" stroke-width="1.2" fill="none"
+       stroke-dasharray="1200" stroke-dashoffset="1200">
+      <line x1="20" y1="360" x2="320" y2="360"/>
+      <polyline points="60,360 60,280 80,280 80,240 100,240 100,200 120,200 120,160 140,160 140,120 200,120 200,160 220,160 220,200 240,200 240,240 260,240 260,280 280,280 280,360"/>
+      <polyline points="140,120 170,80 200,120"/>
+      <rect x="90" y="260" width="20" height="25"/>
+      <rect x="130" y="220" width="20" height="25"/>
+      <rect x="170" y="180" width="20" height="25"/>
+      <rect x="210" y="220" width="20" height="25"/>
+      <rect x="250" y="260" width="20" height="25"/>
+      <rect x="155" y="310" width="30" height="50"/>
+      <line x1="60" y1="375" x2="280" y2="375" stroke-dasharray="4,3" stroke-width=".6"/>
+      <line x1="60" y1="370" x2="60" y2="380"/>
+      <line x1="280" y1="370" x2="280" y2="380"/>
+    </g>
+    <text x="170" y="392" fill="rgba(255,255,255,.5)" font-size="9" text-anchor="middle"
+          font-family="monospace" letter-spacing="1">22,000</text>
+  </svg>
+
+  <!-- Animated plan drawing -->
+  <svg id="arch-plan-svg" width="300" height="300" viewBox="0 0 300 300">
+    <g stroke="rgba(255,255,255,.65)" stroke-width="1.2" fill="none"
+       stroke-dasharray="1200" stroke-dashoffset="1200">
+      <rect x="40" y="40" width="220" height="200"/>
+      <line x1="40" y1="140" x2="160" y2="140"/>
+      <line x1="160" y1="40" x2="160" y2="200"/>
+      <line x1="160" y1="170" x2="260" y2="170"/>
+      <path d="M40,115 Q65,115 65,140" stroke-dasharray="3,3"/>
+      <line x1="40" y1="115" x2="40" y2="140"/>
+      <line x1="170" y1="50" x2="170" y2="130" stroke-dasharray="none" stroke-width=".5"/>
+      <line x1="180" y1="50" x2="180" y2="130" stroke-dasharray="none" stroke-width=".5"/>
+      <line x1="190" y1="50" x2="190" y2="130" stroke-dasharray="none" stroke-width=".5"/>
+      <line x1="200" y1="50" x2="200" y2="130" stroke-dasharray="none" stroke-width=".5"/>
+      <line x1="150" y1="20" x2="150" y2="30" stroke-width=".5"/>
+      <circle cx="150" cy="18" r="6" stroke-width=".8"/>
+    </g>
+    <text x="150" y="21" fill="rgba(255,255,255,.5)" font-size="7" text-anchor="middle" font-family="monospace">A</text>
+  </svg>
+
+  <!-- North mark -->
+  <svg id="north-mark" width="80" height="80" viewBox="0 0 80 80">
+    <circle cx="40" cy="40" r="28" stroke="white" stroke-width=".8" fill="none"/>
+    <line x1="40" y1="12" x2="40" y2="68" stroke="white" stroke-width=".8" stroke-dasharray="3,3"/>
+    <line x1="12" y1="40" x2="68" y2="40" stroke="white" stroke-width=".8" stroke-dasharray="3,3"/>
+    <text x="40" y="54" fill="white" font-size="7" text-anchor="middle" font-family="monospace">N</text>
+  </svg>
+
+  <!-- Dimension mark -->
+  <svg id="dim-mark" width="100" height="60" viewBox="0 0 100 60">
+    <line x1="10" y1="30" x2="90" y2="30" stroke="white" stroke-width=".8"/>
+    <line x1="10" y1="20" x2="10" y2="40" stroke="white" stroke-width=".8"/>
+    <line x1="90" y1="20" x2="90" y2="40" stroke="white" stroke-width=".8"/>
+    <text x="50" y="18" fill="white" font-size="8" text-anchor="middle" font-family="monospace">6,000</text>
+  </svg>
+
+  <!-- Bubbles injected by JS -->
+</div>
+
+<div id="caustic-overlay"></div>
+<div id="wave1"><svg viewBox="0 0 1440 140"><path d="M0,70 C240,110 480,30 720,70 C960,110 1200,30 1440,70 L1440,140 L0,140 Z" fill="rgba(255,255,255,.55)"/></svg></div>
+<div id="wave2"><svg viewBox="0 0 1440 90"><path d="M0,45 C360,75 720,15 1080,45 C1260,60 1350,30 1440,45 L1440,90 L0,90 Z" fill="rgba(255,240,160,.5)"/></svg></div>
+
+<!-- ── App ── -->
+<div id="app">
+
+  <!-- INTRO -->
+  <div id="page-intro" class="page">
+    <div id="intro-inner">
+      <div id="intro-emoji">🌊</div>
+      <div id="intro-badge">ARCHIme</div>
+      <h1 id="intro-title">ARCHIme</h1>
+      <p id="intro-sub">アーキミー 建築タイプ診断</p>
+      <p id="intro-desc">
+        あなたの建築への向き合い方は、<br>どの海の生き物に似ている？<br><br>
+        全 <span>20問</span> の質問に答えて、<br>4つの軸からあなたの建築タイプを見つけよう。
+      </p>
+      <button id="btn-start" onclick="startQuiz()">診断スタート →</button>
+      <p id="intro-note">約5分で完了します ・ 診断結果は自己理解のヒントとして活用できます</p>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="page-quiz" class="page quiz-page" style="display:none">
+    <div id="quiz-header">
+      <div id="quiz-nav">
+        <button id="btn-back" onclick="goBack()" disabled>← 戻る</button>
+        <span id="quiz-counter">01 / 22</span>
+        <div style="width:48px"></div>
+      </div>
+      <div id="progress-track"><div id="progress-fill"></div></div>
+    </div>
+
+    <div class="card-wrap">
+      <div id="question-card">
+        <div class="glass q-outer">
+          <div id="q-label">Q.1</div>
+          <div class="ab-card a-card">
+            <div class="ab-badge">A</div>
+            <p class="ab-text" id="q-text-a"></p>
+          </div>
+          <div class="ab-divider">⋮</div>
+          <div class="ab-card b-card">
+            <div class="ab-badge">B</div>
+            <p class="ab-text" id="q-text-b"></p>
+          </div>
+        </div>
+
+        <div class="opts">
+          <button class="opt-btn" id="opt0" onclick="selectOpt(0)">
+            <div class="opt-dot"></div>Aに共感する
+          </button>
+          <button class="opt-btn" id="opt1" onclick="selectOpt(1)">
+            <div class="opt-dot"></div>ややAに共感する
+          </button>
+          <button class="opt-btn" id="opt2" onclick="selectOpt(2)">
+            <div class="opt-dot"></div>ややBに共感する
+          </button>
+          <button class="opt-btn" id="opt3" onclick="selectOpt(3)">
+            <div class="opt-dot"></div>Bに共感する
+          </button>
+        </div>
+
+        <button id="btn-next" onclick="nextQuestion()">次の質問 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="page-result" class="page" style="display:none">
+    <div id="result-page" class="card-wrap">
+      <div id="result-header">
+        <div id="result-arch-label">ARCHIme RESULT</div>
+        <div id="result-emoji"></div>
+        <div id="result-code-badge"><span id="result-code-text"></span></div>
+        <h2 id="result-name"></h2>
+        <p id="result-en"></p>
+        <p id="result-tagline"></p>
+      </div>
+
+      <div class="glass result-card" style="animation-delay:.08s">
+        <div class="result-label">TYPE BALANCE</div>
+        <div id="axis-result"></div>
+      </div>
+
+      <div class="glass result-card" style="animation-delay:.1s">
+        <div class="result-label">PERSONALITY</div>
+        <p class="result-text" id="result-desc"></p>
+      </div>
+
+      <div class="sw-grid">
+        <div class="sw-card strength-card">
+          <div class="sw-label-s">STRENGTHS</div>
+          <div id="result-strengths"></div>
+        </div>
+        <div class="sw-card weakness-card">
+          <div class="sw-label-w">WEAKNESSES</div>
+          <div id="result-weaknesses"></div>
+        </div>
+      </div>
+
+      <div class="glass result-card" style="animation-delay:.3s">
+        <div class="result-label">建築学生あるある</div>
+        <div id="result-anecdotes"></div>
+      </div>
+
+      <div class="glass result-card" style="animation-delay:.4s">
+        <div class="result-label">CAREER DIRECTION</div>
+        <div class="career-tags" id="result-career"></div>
+      </div>
+
+      <div class="glass result-card" style="animation-delay:.46s">
+        <div class="result-label">GROUP ROLE</div>
+        <div id="result-group-role"></div>
+      </div>
+
+      <div class="glass result-card" style="animation-delay:.52s">
+        <div class="result-label">WORK SCENE</div>
+        <div id="result-work-scene"></div>
+      </div>
+
+      <div class="compat-grid">
+        <div class="glass result-card compat-card" style="animation-delay:.58s">
+          <div class="result-label">GOOD MATCH</div>
+          <div id="result-compat-good"></div>
+        </div>
+        <div class="glass result-card compat-card" style="animation-delay:.64s">
+          <div class="result-label">WATCH OUT</div>
+          <div id="result-compat-bad"></div>
+        </div>
+      </div>
+
+      <div class="share-section" style="animation-delay:.7s">
+        <button id="share-x" class="share-btn x" type="button">Xでシェア</button>
+        <button id="share-line" class="share-btn line" type="button">LINEでシェア</button>
+        <button id="share-instagram" class="share-btn instagram" type="button">Instagram用画像を保存</button>
+        <button id="share-save" class="share-btn save" type="button">結果画像を保存</button>
+        <div id="share-status"></div>
+      </div>
+
+      <button id="btn-restart" onclick="restart()">もう一度診断する</button>
+    </div>
+  </div>
+
+<div id="share-card-canvas" class="share-card-canvas" aria-hidden="true"></div>
+
+</div><!-- #app -->
+
+<script>
+// ── Data ──────────────────────────────────────────────────
+const questions = [
+  {
+    "axis": "value",
+    "A": "設計初期に最も重要視するスタディ手法は？スケッチ、粘土模型、3Dレンダリングによる造形の検討",
+    "B": "設計初期に最も重要視するスタディ手法は？ダイアグラム、プログラム分析、パラメトリックな数値解析"
+  },
+  {
+    "axis": "worldview",
+    "A": "まだ見ぬ未来のライフスタイルや、社会へのメッセージを提案することにワクワクする",
+    "B": "目の前の敷地課題を解決し、具体的で質の高い空間を実現することにやりがいを感じる"
+  },
+  {
+    "axis": "worldview",
+    "A": "理想の建築像をまず自由に描きたい",
+    "B": "条件や制約から最適な形を見つけたい"
+  },
+  {
+    "axis": "value",
+    "A": "空間の雰囲気や素材の表情に敏感だ",
+    "B": "動線や用途の合理性を意識して設計する"
+  },
+  {
+    "axis": "process",
+    "A": "面白い案が見つかるなら、直前でも設計変更を厭わない。プロセスは発見のためにある",
+    "B": "クオリティとリスクを管理するため、決定事項は覆さない。プロセスは完遂のためにある"
+  },
+  {
+    "axis": "process",
+    "A": "手を動かしながら試行錯誤して考える",
+    "B": "計画を立ててから進める方が安心する"
+  },
+  {
+    "axis": "workstyle",
+    "A": "チーム全体の合意形成を重視したい",
+    "B": "最終判断は自分の価値観で決めたい"
+  },
+  {
+    "axis": "workstyle",
+    "A": "チームで話しながら考える方が力を発揮できる",
+    "B": "一人で黙々と集中する方が力を発揮できる"
+  },
+  {
+    "axis": "worldview",
+    "A": "いつか実現したい未来に惹かれる",
+    "B": "今できる現実的な解に価値を感じる"
+  },
+  {
+    "axis": "workstyle",
+    "A": "他者の意見を取り入れながら調整するのが得意",
+    "B": "自分の世界観や美学を大切にしている"
+  },
+  {
+    "axis": "process",
+    "A": "とにかく手を動かし模型やドローイングを大量に作ることで、偶然性の中から答えを探る",
+    "B": "全体の要件を整理し、スケジュールとタスクを明確にしてから着実に解像度を上げていく"
+  },
+  {
+    "axis": "value",
+    "A": "理屈では説明できない感覚や情緒に訴える現象的な美しさを信じている",
+    "B": "無駄が削ぎ落とされすべての要素に理由がある論理的な美しさを信じている"
+  },
+  {
+    "axis": "workstyle",
+    "A": "スタッフや専門家とブレインストーミングし議論の中で予期せぬアイデアが出るのを好む",
+    "B": "まず一人で集中してスケッチし自分の中のコアアイデアを固める"
+  },
+  {
+    "axis": "process",
+    "A": "締切直前まで粘って最後に仕上げることが多い",
+    "B": "段階的に進めて余裕を持って仕上げたい"
+  },
+  {
+    "axis": "worldview",
+    "A": "コンセプトづくりが一番楽しい",
+    "B": "実際に形にしていく過程が好き"
+  },
+  {
+    "axis": "value",
+    "A": "美しい形に心が動く",
+    "B": "意図に適った機能性に納得感を感じる"
+  },
+  {
+    "axis": "process",
+    "A": "全体のスケジュールに縛られすぎず柔軟に進めたい",
+    "B": "設計前にスケジュールとタスクを決めその通り進めたい"
+  },
+  {
+    "axis": "worldview",
+    "A": "まずあるべき姿や強いコンセプトを言語化して形を導く",
+    "B": "敷地条件や法規など与条件から形を導く"
+  },
+  {
+    "axis": "workstyle",
+    "A": "チームメンバーと議論して解決策を探る",
+    "B": "一人で静かな場所に籠り思索する"
+  },
+  {
+    "axis": "value",
+    "A": "大胆なフォルムや印象に残る空間構成",
+    "B": "使いやすさや構造美がバランスよく成立している建築"
+  }
+];
+
+const AXES = [
+  {
+    key: 'worldview',
+    codeA: 'V',
+    codeB: 'R',
+    label: '世界観軸',
+    nameA: '構想型',
+    nameB: '現実型',
+    englishA: 'Vision',
+    englishB: 'Realistic'
+  },
+  {
+    key: 'value',
+    codeA: 'F',
+    codeB: 'S',
+    label: '価値志向軸',
+    nameA: '造形志向',
+    nameB: '機能志向',
+    englishA: 'Form',
+    englishB: 'System'
+  },
+  {
+    key: 'workstyle',
+    codeA: 'C',
+    codeB: 'I',
+    label: '働き方軸',
+    nameA: '組織型',
+    nameB: '個人型',
+    englishA: 'Collaborative',
+    englishB: 'Independent'
+  },
+  {
+    key: 'process',
+    codeA: 'E',
+    codeB: 'P',
+    label: 'プロセス軸',
+    nameA: '探索型',
+    nameB: '計画型',
+    englishA: 'Explore',
+    englishB: 'Plan'
+  }
+];
+
+const results = {
+  "VFCE": {
+    "code": "VFCE",
+    "creature": "ビジョンイルカ",
+    "english": "Vision Dolphin",
+    "emoji": "🐬",
+    "tagline": "感性とチームワークで未来を描く構想家。",
+    "color": "#4FC3F7",
+    "description": "柔らかな感性と直感を武器に、未来像を描くタイプ。人の感情に敏感で、会議の空気すら読んで適切な言葉を添える。抽象概念をつかむのが得意で、アイデアの種を見つける天才。周囲への気遣いで疲れやすい一面も。課題の初日から世界観づくりに没頭し、図面より物語や空気感の整理が先に進む。スタジオでもチームの雰囲気を自然に整え、迷った時に核心を突く発言ができる一方、論理整理や納まりが後回しになりがちで提出直前に慌てることもある。将来は企画・意匠・都市系など世界観を扱う領域で強みが活きるが、学生のうちに論理力を少し鍛えるとさらに伸びる。",
+    "strengths": [
+      "コンセプトづくりが得意",
+      "共感力が高く、チームをまとめる",
+      "未来志向で企画が得意",
+      "抽象的な価値を言語化する能力"
+    ],
+    "weaknesses": [
+      "細部の詰めやルーティン作業が苦手",
+      "論理的説明がやや弱い",
+      "気遣いしすぎて疲労しやすい",
+      "急な現場調整で混乱することも"
+    ],
+    "archi_anecdotes": [
+      "気づけば世界観のメモばかりが増えていく",
+      "模型は雰囲気重視で光の入れ方に異常なこだわり",
+      "教員に「コンセプトは良いが裏付ける根拠が浅い」と言われがち",
+      "机に観葉植物置きがち",
+      "アイデアは早いのに手が遅い",
+      "チームの空気を読んで潤滑油になる"
+    ],
+    "career": [
+      "企画開発／都市計画／公共系意匠",
+      "大規模プロジェクトの初期構想担当",
+      "デベロッパーの企画職・戦略部門",
+      "官民連携プロジェクトのコーディネーター"
+    ],
+    "group_role": [
+      "テーマ設定・企画・ストーリー構成を担当すると実力を発揮",
+      "プレゼンの導入部分を作らせると強い",
+      "模型のディテールより世界観仕上げが得意",
+      "図面作成や工程管理を任せると課題が遅れる"
+    ],
+    "work_scene": [
+      "コワーキングスペースで、メンバーの話を整理しながら大きな方向性を示す姿が象徴的。「つまり、私たちがつくりたい未来はこれだよね？」とホワイトボードに描いた瞬間、場の空気が変わる。模型は雰囲気重視で作るタイプ。",
+      "模型に観葉植物を置く",
+      "スケッチが優しい線ばかりになる",
+      "プレゼンのモチベ上げでカフェに行きがち",
+      "人間関係で疲れると、海を見ると回復する"
+    ],
+    "compatibility_good": [
+      "VFIE（タコ）：世界観 × 表現力の爆発ペア",
+      "→イルカの柔らかい世界観にタコの鋭い表現力が重なり、学生時代はスタジオの空気を一気に変えるほどの没入感ある作品を生み出し、実務でも企画段階で他社を圧倒するほど魅せる力に振り切った最強クリエイティブコンビとなる。",
+      "VFCP（クジラ）：感性を構成で支える安定バランス",
+      "→イルカの直感的なアイデアをクジラが構成力で軸に変え、学生時代はふわりとした世界観が伝わる図面へと整い、実務では方向性と論理が美しく噛み合うことで企画から実施設計まで安定して進む落ち着きある理想の補完関係になる。"
+    ],
+    "compatibility_bad": [
+      "RSCP（ワニ）：感性と論理がかみ合わない平行線",
+      "→雰囲気で進めたいイルカを現実最優先のワニが容赦なく切り返すため学生時代は締切前まで方向性が定まらず迷走し続け、実務でも施工性と世界観が強く対立して毎回PMが火消しに追われる緊張度MAXの地獄ペア。",
+      "解決策：イルカはまず理想や完成イメージを一度しっかり共有し、その後にワニが現実的な条件や制約を整理する順番にすると、価値観の衝突を最小限に抑えられる。"
+    ]
+  },
+  "VFCP": {
+    "code": "VFCP",
+    "creature": "マエストロクジラ",
+    "english": "Maestro Whale",
+    "emoji": "🐋",
+    "tagline": "美と秩序で大海原を導くリーダー設計者。",
+    "color": "#5C6BC0",
+    "description": "堂々として落ち着きがあり、周囲からの信頼感が圧倒的。美学が安定しており、ブレない軸でチームを引っ張る指揮者。部分より全体最適を見るタイプで、秩序・構成・バランスに強い。課題を読んだ段階で全体の構成や時間配分が見えているタイプで、チーム内では自然と司令塔役になる。案の整理・レイアウト・優先順位の判断がうまく、講評会でも「破綻がない」と評価されやすいが、慎重さゆえに大胆な挑戦が減りがち。学生時代はあえて攻めた案に挑むことで、安定感にプラスして表現力も磨かれる。",
+    "strengths": [
+      "統率力が高い",
+      "理路整然とした判断ができる",
+      "大規模案件で力を発揮",
+      "美意識と理性の両立"
+    ],
+    "weaknesses": [
+      "若手の自由案にやや厳しめ",
+      "細部の遊びを理解しづらい",
+      "正しさを重視しすぎて窮屈になることも"
+    ],
+    "archi_anecdotes": [
+      "課題の要求条件をすみからすみまで読む",
+      "レイアウトが無駄なくうつくしい",
+      "1年生の頃から講評会で安定感を褒められる",
+      "図面チェックの指摘が鋭い",
+      "仕上がりに品格がある",
+      "友達から「なんか大人っぽい」と言われがち"
+    ],
+    "career": [
+      "プロジェクトマネージャー／官公庁設計／設計監理",
+      "公共建築のリーダー",
+      "組織設計で主任・主査ポジション向き"
+    ],
+    "group_role": [
+      "チームの全体構成を握らせると安定",
+      "プレゼンの最終調整",
+      "レイアウト・構図の最終決定",
+      "行きすぎた案は止めてくれる安全装置"
+    ],
+    "work_scene": [
+      "会議では静かに座っているのに、最後の3分で完璧にまとめて全員が納得。図面チェックは鋭いが愛がある。若手としてはプレッシャーだが、同時に安心感も抜群。",
+      "指摘コメントが論文並みに長い",
+      "机の上がきっちり整理されている",
+      "素材選びが上品",
+      "若手に「安心感ある」と言われがち"
+    ],
+    "compatibility_good": [
+      "VSCE（サメ）：構成 × 論理の無敗コンビ",
+      "→クジラの緻密な構成力にサメの鋭い論理が加わり、学生時代は図面・資料・講評会の質が群を抜いてプロ級となり、実務でも整合性と精度が異常に高いためクライアントから絶大な信頼を獲得する理詰めの最強プロフェッショナルペアになる。",
+      "RFCE（ペンギン）：構成と共感が調和する柔らか設計",
+      "→クジラが構成面を固め、ペンギンが共感性を添えることで学生時代は優しく読みやすい空間が生まれ、実務では生活者視点と合理性の両立により公共・地域系で抜群に強いほっとする完成度の高い組み合わせ。"
+    ],
+    "compatibility_bad": [
+      "VFIP（フィッシュ）：構成と丁寧のペース不一致",
+      "→クジラが早めに全体像を固めたい一方、フィッシュは細部へのこだわりが強すぎて進行が遅れ、学生時代はペースが合わず調整が難しく、実務でも完成度は高いものの、工程が読みづらく「慎重すぎる」やや不安定なペアになる。",
+      "解決策： 初期はクジラに自由に発想させる時間を確保し、中盤以降はフィッシュが構成を固定するなど、フェーズごとに主導権を切り替えることで混乱を防げる。"
+    ]
+  },
+  "VFIE": {
+    "code": "VFIE",
+    "creature": "アーティストタコ",
+    "english": "Artist Octopus",
+    "emoji": "🐙",
+    "tagline": "自由な発想で空間を紡ぐ夢想家。",
+    "color": "#EC407A",
+    "description": "超・感性型。アイデアは波のように押し寄せ、気分によって生産性が劇的に上下する。誰よりも独創的だが、説明は苦手。「感じてほしい」が口癖。感性の爆発力が強く、スケッチ・模型・CGなどすべてがアート寄りになるタイプ。没入すると誰も話しかけられないほど集中し、講評会でも「心を掴まれた」と言われやすいが、説明が感覚的になりすぎて論理の部分が弱くなることもある。学生のうちに言語化の練習を少し積むだけで、表現×説得力のバランスが大きく向上する。",
+    "strengths": [
+      "独創性が高い",
+      "素材・色彩への感度",
+      "アート×建築の融合に強い",
+      "気づいたら周りが見えなくなる集中力"
+    ],
+    "weaknesses": [
+      "納期が天敵",
+      "論理説明が苦しい",
+      "ムードに左右されやすい"
+    ],
+    "archi_anecdotes": [
+      "模型・素材に異常にこだわる",
+      "教室の隅でヘッドホンして作業",
+      "スケッチが得意",
+      "図面化がめちゃ遅い",
+      "Pinterestが教科書",
+      "気分乗ってる時は最強、乗らないと沈黙",
+      "机が汚いのに作品は綺麗"
+    ],
+    "career": [
+      "アトリエ系意匠／展示デザイン／アンビルド",
+      "アトリエ事務所として独立",
+      "ブランディング空間"
+    ],
+    "group_role": [
+      "コンセプトビジュアル担当",
+      "模型の表現要素・素材選び",
+      "空間の雰囲気作り",
+      "スケジュール管理させたら詰む"
+    ],
+    "work_scene": [
+      "アトリエの隅でヘッドホンしながら模型をずっと触っている。机の上は謎の素材で溢れ、スケッチブックが積み重なる。",
+      "資料より Pinterest が命",
+      "こだわりすぎて時間を忘れる",
+      "雰囲気を語りがち"
+    ],
+    "compatibility_good": [
+      "VSIE（イカ）：表現 × 技術の圧倒的イノベーション",
+      "→タコの圧倒的な表現力にイカの技術革新が加わり、学生時代は唯一無二の攻めた作品を怒涛のスピードで生み出し、実務でも企画や先端的な提案において他の追随を許さない革新型クリエイティブペアとなる。",
+      "VFCE（イルカ）：物語をアートに昇華させる感性共鳴",
+      "→イルカの世界観をタコが表現で深化させ、学生時代は強烈な印象を残す作品になり、実務でもビジュアル面でクライアントを引き込みやすいが、方向性の揺れに注意が必要な華やかさ満点の共感ペア。"
+    ],
+    "compatibility_bad": [
+      "RSCE（シロクマ）：感性とロジックの断絶",
+      "→タコが感覚で語るたびにシロクマが論理を求めて議論が噛み合わず学生時代はスタートから迷子になり、実務ではアート性と構造化思考の溝が深すぎて毎回別言語会議になる危険な相性。",
+      "解決策：タコは「なぜこの形が美しいのか」を簡単な言葉で補足し、シロクマはそれを論理的に整える役に徹することで、否定ではなく昇華の関係になれる。"
+    ]
+  },
+  "VFIP": {
+    "code": "VFIP",
+    "creature": "ソロタリーフィッシュ",
+    "english": "Solitary Fish",
+    "emoji": "🐠",
+    "tagline": "美を極める孤高のデザイン職人。",
+    "color": "#80DEEA",
+    "description": "美意識の高さは16タイプ随一。孤独を苦にせず、自分の世界で完璧な美を追求するタイプ。チーム作業は苦手だが、ひとりでやらせると圧倒的なクオリティを出す。静かに確実に作業を進め、美しさと精度にとことんこだわる。線一本・余白1mmにまで意識が行き届いており、講評会でも「丁寧で綺麗」と評価される。ただし細部から作り込みすぎて進行が遅れがちで、全体の大胆さが不足することもある。将来的には繊細さを活かせる職種に向くが、学生時代に荒く作る経験も少し積むと設計の幅が広がる。",
+    "strengths": [
+      "審美眼×精密性",
+      "集中力が驚異的",
+      "細かい納まりや寸法に強い",
+      ""
+    ],
+    "weaknesses": [
+      "協働が苦手",
+      "柔軟な方向転換が苦手",
+      "コミュニケーションが少なめ"
+    ],
+    "archi_anecdotes": [
+      "黙って黙々と作業",
+      "図面の線幅に異常なこだわり",
+      "無印・モノトーンの服が好き",
+      "講評会ではコメント少なめ",
+      "作品は綺麗でミニマル",
+      "こだわりすぎて提出日に徹夜常習",
+      "でも妥協は絶対しない"
+    ],
+    "career": [
+      "アトリエ設計／家具デザイン",
+      "ミニマル建築",
+      "プロダクト開発／研究職"
+    ],
+    "group_role": [
+      "どんな作業も任せれば高品質",
+      "細かい図面・仕上げ担当で精度が高い",
+      "模型の最後の仕上げも強い",
+      "意見を言わなすぎて誤解されがち"
+    ],
+    "work_scene": [
+      "静かで薄暗い作業スペースで、深夜に黙々と線の太さを調整している。誰にも邪魔されたくないタイプ。",
+      "線幅設定に命をかける",
+      "黒い服を好む",
+      "余白の扱いが上手い"
+    ],
+    "compatibility_good": [
+      "RSIP（シャチ）：精度と論理が静かに積み上がる安定型",
+      "→お互いのペースが似ているため学生時代は地味だが確実な完成度を生み、実務でも細部の美意識と論理整合が高い水準で揃い続ける静かな職人ペアになる。",
+      "VFCP（クジラ）：美しさ × 構成力の静かな最適解",
+      "→フィッシュの丁寧で緻密な作業にクジラの構成力が合わさり、学生時代は静かに最高クラスの完成度を叩き出し、実務でも精度と整理が綺麗に整った堅実で美しい成果物をつくる黄金コンビとなる。"
+    ],
+    "compatibility_bad": [
+      "RFIE（ラッコ）：試作の嵐に飲まれる繊細ワーカー",
+      "→ラッコが手を動かしながら案を変えるたびにフィッシュの精度重視の作業が崩され、学生時代は終盤まで完成形が見えず不安だけが増え、実務でも試作過多と慎重さの溝で整合が取れない危険な組み合わせ。",
+      "解決策：ラッコの試作や実験は範囲と期限を決めて行い、フィッシュは最終形の完成度だけに集中する役割分担にすると、互いの強みが生きる。"
+    ]
+  },
+  "VSCE": {
+    "code": "VSCE",
+    "creature": "ロジックサメ",
+    "english": "Logic Shark",
+    "emoji": "🦈",
+    "tagline": "理論とスピードで構造を制す実務派。",
+    "color": "#546E7A",
+    "description": "16タイプの中で最も合理性に優れるタイプ。数字・構造・整合性が大好物で、感情より事実で判断する。判断が早く、曖昧さを嫌い「結論は？」と先に聞きがち。状況を瞬時に整理し、最短解を見つける戦略的実務家。課題が出た瞬間から要件や整合性を読み解き、論理的に最短で正解へ近づく道を探す傾向あり。図面の矛盾に敏感で、提出前日に他人のミスすら見つけて直したくなるほど精度にこだわる一方、感覚的・抽象的な議論には少し苦手意識がある。講評会では鋭い質問にも落ち着いて答えられ、教授からの信頼が厚いが、学生時代は遊び心や世界観の強さを少し混ぜると設計がぐっと豊かになる。",
+    "strengths": [
+      "論理力／情報処理能力が高い",
+      "構造・設備的視点が強い",
+      "判断がクリアでブレない",
+      "問題解決力が高い"
+    ],
+    "weaknesses": [
+      "感情コミュニケーションが苦手",
+      "直感型の人との衝突が発生しやすい",
+      "柔らかい表現が難しい",
+      "曖昧な案件が苦手"
+    ],
+    "archi_anecdotes": [
+      "課題の要求条件を最初に箇条書きで整理",
+      "「結論から言うと…」が口癖",
+      "図面の整合性が取れないと寝れない",
+      "スタジオで常に冷静。感情的にならない",
+      "ダメな案はハッキリ言うので誤解されることも",
+      "気づいたらみんなのモデルの寸法を確認している",
+      "教員の言いそうなことを予想して言い当てる"
+    ],
+    "career": [
+      "構造設計／設備設計／BIMエンジニア",
+      "研究開発／建築コンサル",
+      "合理性重視のゼネコン設計部"
+    ],
+    "group_role": [
+      "要求条件の分析",
+      "論理的な図面構成",
+      "整合性チェック（最強）",
+      "プレゼン資料の使いやすいレイアウト設計",
+      "モデリングの細部チェック"
+    ],
+    "work_scene": [
+      "図面チェックで矛盾を秒で見つける。会議ではメモを最小限にし、必要なことだけを抽出。設計調整の中で噛み合わない時は、冷静に「論点はここです」と場を整える。",
+      "整合性が取れないと眠れない",
+      "打合せで要点を箇条書きにしがち",
+      "データ資料に興奮する"
+    ],
+    "compatibility_good": [
+      "VFCP（クジラ）：論理 × 構成の精度無双コンビ",
+      "→ サメの鋭い論理とクジラの強固な構成が噛み合い、学生時代は図面の整合が恐ろしいほど綺麗に揃い、実務でも説明力と資料精度が抜群でとりあえずこの2人に任せれば安心と言われる完成度最強タッグとなる。",
+      "RSCE（シロクマ）：精査と構造化のダブルロジック",
+      "→サメの論理的洞察にシロクマの情報整理力が加わり、学生時代は講評会でどの先生からもわかりやすいと褒められ、実務では要件定義〜図面化まで迷いが少ない冷静沈着で頼もしすぎる分析コンビになる。。"
+    ],
+    "compatibility_bad": [
+      "VFIE（タコ）：整合主義と衝動性の大衝突",
+      "→タコの突然のひらめき変更にサメが「論理的根拠は？」とすぐ反論し、学生時代は作業が全く前に進まず、実務でもデザインの突発性と合理性が常に衝突して議論の迷子状態が続く危険な相性。",
+      "解決策：サメは最初から結論を出そうとせず質問ベースで整理し、タコは感性案を1つに絞って持ってくるだけで、議論が前向きに進みやすくなる。"
+    ]
+  },
+  "VSCP": {
+    "code": "VSCP",
+    "creature": "マネージャーアザラシ",
+    "english": "Manager Seal",
+    "emoji": "🦭",
+    "tagline": "冷静沈着にプロジェクトを導く調整型リーダー。",
+    "color": "#42A5F5",
+    "description": "落ち着き・安定・調整力の三拍子。熱すぎず冷たすぎずの絶妙なバランス感覚で、チームの中間管理職として圧倒的な信頼を誇る。混乱している現場にスッと入り、沈静化させる能力がある。グループ課題になると誰より早くタスク表やスケジュールを作り、全員の進捗や役割が気になってしまう縁の下の安定役。自分の案よりチームの調整を優先してしまい、講評会で少し自分の作品が薄く見えることもあるが、完成まで持っていける実行力が強み。学生時代は、マネジメント能力ばかり発揮しすぎず、自分の案に集中する時間を意図的につくると成長が早い。",
+    "strengths": [
+      "調整力と安定感がトップクラス",
+      "現場と設計の橋渡しがうまい",
+      "冷静な判断力",
+      "リスク管理に強い"
+    ],
+    "weaknesses": [
+      "プレッシャーを抱え込みやすい",
+      "強いリーダーや強い個性に押されやすい",
+      "発想力はやや控えめ"
+    ],
+    "archi_anecdotes": [
+      "グループLINEを管理しがち",
+      "課題スケジュールを真っ先に作る",
+      "自然に仲裁役になる",
+      "大声で言い争うタイプが苦手",
+      "やるべきタスクを淡々と片付けていく",
+      "講評会の準備は早めに始めるタイプ",
+      "資料を清潔感のある感じに仕上げる"
+    ],
+    "career": [
+      "プロジェクトマネージャー／施工管理／設計監理",
+      "ゼネコンの所長候補",
+      "官公庁の建築系ポジション"
+    ],
+    "group_role": [
+      "プロジェクトマネジメント",
+      "スケジュール・タスク分担の管理",
+      "メンバー間の調整（非常に強い）",
+      "現実路線の案をまとめる",
+      "進行役が得意"
+    ],
+    "work_scene": [
+      "図面・現場・役所とのやり取りを淡々とこなしながら、プロジェクト全体を少しずつ前へ動かすタイプ。揉めた現場へ行くと不思議と場が落ち着く調整のプロ。",
+      "チェックリストを作りすぎる",
+      "関係者からの相談がなぜか集まる",
+      "図面の付箋量が多い"
+    ],
+    "compatibility_good": [
+      "RFCE（ペンギン）：調整 × 共感の優しい現場最強ペア",
+      "→ アザラシの調整力とペンギンの人への理解が噛み合い、学生時代はチームの雰囲気が驚くほど円滑に進み、実務ではクライアントとの会話や現場調整を最も穏やかに進める柔らかいけど最強の運営コンビ。",
+      "VFCP（クジラ）：管理 × 構成が生む実務力MAX",
+      "→ アザラシが進行管理を担い、クジラが構成の核を固めるため学生時代は安定して作品がまとまり、実務ではマネジメントと設計の両輪が回るプロジェクト管理力に特化した最強級コンビとなる。"
+    ],
+    "compatibility_bad": [
+      "VFIE（タコ）：破壊衝動と管理の崩壊",
+      "→タコの衝動的な案変更にアザラシの管理が追いつかず学生時代は提出直前まで混乱し、実務でも進行管理が破綻しやすく毎回火消しが必要な緊張感MAXのペアになる。",
+      "解決策：プロジェクト開始時に「ここまでは変更OK」「ここからは固定」とタイミングを明確に決めておくことで、管理と創造の衝突を防げる。"
+    ]
+  },
+  "VSIE": {
+    "code": "VSIE",
+    "creature": "イノベーションイカ",
+    "english": "Innovation Squid",
+    "emoji": "🦑",
+    "tagline": "技術と遊び心で新しい建築を生む。",
+    "color": "#29B6F6",
+    "description": "技術好き × 好奇心 × 柔軟性のハイブリッドタイプ。デジタル・最新技術・研究にワクワクする。ルールの中に遊びを見つけて改善提案を出すクリエイティブエンジニア。新しい技術やソフトに強く、気づけばGrasshopperやBIMで遊んでしまうタイプ。連続的な試行やCGの質感調整が得意で、未来的な作品をつくれる反面、技術が先行しすぎて空間の使われ方や心地よさの説明が曖昧になることもある。講評会では技術系の先生から好かれやすく、学生時代に人の視点を学ぶと作品の完成度が一気に跳ね上がる。",
+    "strengths": [
+      "技術探究心が強い",
+      "改善・改良が得意",
+      "新技術導入の原動力",
+      "柔軟な発想で問題解決"
+    ],
+    "weaknesses": [
+      "飽きっぽい",
+      "コツコツ積み上げが苦手",
+      "慎重さが足りない時も"
+    ],
+    "archi_anecdotes": [
+      "BIMやVRなど新しいツールに誰より詳しい",
+      "レンダリングの設定を研究している",
+      "気づいたらGrasshopper開いている",
+      "技術の実験が楽しすぎて時間を忘れる",
+      "素材サンプルや建材カタログが好き",
+      "今までと違う攻めた案を出したくなる",
+      "講評会で「新しい視点で面白い」と褒められがち"
+    ],
+    "career": [
+      "設備設計／BIM開発／研究職",
+      "ソフトメーカー／建材メーカー",
+      ""
+    ],
+    "group_role": [
+      "デジタル技術導入担当",
+      "表現の革新（新しい模型や新表現）",
+      "改良・改善のアイデア出し",
+      "モデリングスピードが速い"
+    ],
+    "work_scene": [
+      "BIMやデジタルの新機能を試しながら「これ、もっと良くできる！」と生き生きする。建材メーカーのショールームで興奮しがち。",
+      "新しいツールをすぐ試す",
+      "パラメトリック設計が好き",
+      "周りから変人と言われがち"
+    ],
+    "compatibility_good": [
+      "VFIE（タコ）：技術 × 表現で唯一無二の前衛建築を生む",
+      "→ イカの技術力とタコの表現力が融合し、学生時代は毎回スタジオがざわつく攻めた作品が生まれ、実務でも新技術を扱う魅力的な提案でクライアントを惹きつける革新型の最強ペアとなる。",
+      "VSCE（サメ）：実験を論理で固める高性能ペア",
+      "→ イカの試作と速度にサメの論理が加わり、学生時代は実験的アイデアが課題として成立し、実務でも革新的アイデアを確実な形に変える技術と合理の高相性ペアになる。"
+    ],
+    "compatibility_bad": [
+      "RSCP（ワニ）：挑戦心と現実主義の完全衝突",
+      "→イカが攻めた実験をしようとするたび、ワニが現実性ゼロと即座に切るため学生時代は議論が進まず、実務でも革新と施工性の衝突で会議が常に炎上する危険コンビになる。",
+      "解決策：イカは実験的な案と実装前提の案を最初から分けて提示し、ワニは本命案だけを評価対象にすることで、議論が現実的に進む。"
+    ]
+  },
+  "VSIP": {
+    "code": "VSIP",
+    "creature": "マスターカメ",
+    "english": "Master Turtle",
+    "emoji": "🐢",
+    "tagline": "慎重かつ緻密に積み上げる堅実派。",
+    "color": "#66BB6A",
+    "description": "ゆっくり・確実・丁寧がモットー。派手さはないが、積み上げによって高品質を実現する安定型。慎重で、リスク回避能力が高い。情報整理から入り、ゆっくり丁寧に案を積み上げる。作業スピードは遅めだが、間違いが少なく、最終段階で堅実な完成度にたどり着くタイプ。周囲が焦っていても落ち着いて作業できる強みがあるが、即日課題や短期制作ではスピード不足が目立つことも。学生時代はスピード優先の荒い制作を一度経験すると、得意な丁寧さにもさらに深みが出る。",
+    "strengths": [
+      "正確性と安定性",
+      "リスク管理能力が高い",
+      "継続力の塊",
+      "堅実な納まり検討"
+    ],
+    "weaknesses": [
+      "決断が遅い",
+      "変化への対応が苦手",
+      "スピード勝負に弱い"
+    ],
+    "archi_anecdotes": [
+      "課題初日から地味に作業進めている",
+      "納まりがきれい",
+      "仕上がりに妙な安定感がある",
+      "椅子や手すりなど細かい部分が異常に丁寧",
+      "夜な夜な細かい修正をしていて気づいたら朝",
+      "グループ課題では裏仕事を1人で進める",
+      "驚くほど控えめだけどめちゃ優秀"
+    ],
+    "career": [
+      "構造設計／施工管理／研究職",
+      "地味だが高難度の精度仕事に向く"
+    ],
+    "group_role": [
+      "詳細図面担当",
+      "納まり・精度担当",
+      "模型の仕上げ・細部調整",
+      "設計案が暴走しないよう守りの要になる"
+    ],
+    "work_scene": [
+      "朝一で作業計画を立て、ひとつずつ着実にこなすタイプ。現場でも確実な判断が出せるため信頼度は高い。",
+      "図面のチェックが異常に細かい",
+      "慎重派ゆえに机が整っている",
+      "朝型が多い"
+    ],
+    "compatibility_good": [
+      "RSIP（シャチ）：慎重 × 思索の堅実最強ペア",
+      "→ カメの丁寧な積み上げとシャチの深い分析が組み合わさり、学生時代は堅実で破綻のない完成度を出し、実務でも安定した品質と正確な判断で信頼度の高い静かに強い職人コンビとなる。",
+      "RFCP（フグ）：誠実と丁寧の堅実ライン",
+      "→カメの慎重さにフグの丁寧さが加わり、学生時代はミスが少なく安心して任せられる作業ができ、実務でも地道に完成度を上げ続ける信頼重視の補完ペア。"
+    ],
+    "compatibility_bad": [
+      "VFCE（イルカ）：慎重と感性の永遠の平行線",
+      "→ カメの慎重な検討に対しイルカが感覚で方向転換するため学生時代は作業が常に振り回され続け、実務でも世界観と堅実性が噛み合わずプロジェクトが迷走しがちな危険な組み合わせ。",
+      "解決策：カメが方向性を一度決めきり、イルカは途中で口を出すのではなく検証役に回ることで、迷走せずに精度を高められる。"
+    ]
+  },
+  "RFCE": {
+    "code": "RFCE",
+    "creature": "コンテクストペンギン",
+    "english": "Context Penguin",
+    "emoji": "🐧",
+    "tagline": "環境と人をつなぐ温かなデザイナー。",
+    "color": "#26A69A",
+    "description": "温厚で聞き上手。相手の気持ちや背景を自然に読み取り、空間づくりに反映できる共感型デザイナー。環境・文脈・地域性を重視し、住民との対話からアイデアを膨らませる。静かだが芯のあるタイプ。敷地・地域・人の気持ちを想像するのが自然と得意で、課題の初期段階からここにいる人はどう感じる？と人の視点で考え始める。図面にも居心地の良い溜まりややわらかい動線が生まれやすく、講評会でも「温かい建築」「使いやすそう」と評価されることが多い。ただし刺激的なコンセプトや尖った形状には踏み込みにくく、世界観の強さでは他タイプに劣ることも。将来的には公共・地域系の設計に強くなるが、学生のうちに先に形で考えてみる経験をすると幅が広がる。",
+    "strengths": [
+      "共感力が非常に高い",
+      "公共性・環境性に強い",
+      "調和・バランス感覚が優れている",
+      "対話の中で価値を見つける能力"
+    ],
+    "weaknesses": [
+      "強い個性に押されがち",
+      "意見を率直に言いにくい",
+      "スピード勝負が苦手",
+      ""
+    ],
+    "archi_anecdotes": [
+      "ワークショップや街歩きが好き",
+      "課題の敷地分析がめちゃ丁寧",
+      "「人がどう使うか」をずっと考えている",
+      "コンセプトのキーワードがあたたかい",
+      "模型に小さな住民フィギュア置きがち",
+      "講評会で「温かい空間ですね」と褒められる",
+      "スタジオの空気がピリつくと静かに仲裁"
+    ],
+    "career": [
+      "公共建築／都市計画／意匠設計",
+      "リフォーム／地域系プロジェクト",
+      "住民参加型プロジェクト"
+    ],
+    "group_role": [
+      "敷地分析・ヒアリング担当",
+      "空間の雰囲気や使い方の調整",
+      "プレゼンの読みやすさを上げる役",
+      "メンバーの意見をまとめる調和役"
+    ],
+    "work_scene": [
+      "地域ワークショップで住民の声を丁寧に拾いながら、空間の心地よさをスケッチに落とし込む。資料にはやさしい丸みのある線が多い。",
+      "椅子の座り心地にうるさい",
+      "模型に住民の人型を置きがち",
+      "自分も住みたくなる空間をつくる"
+    ],
+    "compatibility_good": [
+      "VFCP（クジラ）：共感 × 構成の優しさと論理の黄金比",
+      "→ ペンギンの人への寄り添いにクジラの構成力が加わり、学生時代は使う人の視点と整った図面が自然に共存し、実務でも公共・地域系案件で「説明しなくても伝わる」優しさと合理性が高次元で揃う最強の設計コンビになる。",
+      "RSCE（シロクマ）：感性と論理が静かに嚙み合う情報設計",
+      "ペンギンが空間の人の気持ちを拾い、シロクマがそれをロジックで整えることで学生時代は柔らかい雰囲気の中に強い説得力が宿り、実務でも利用者視点と確固たる要件整理が両立する高品質なペアとなる。"
+    ],
+    "compatibility_bad": [
+      "VSCE（サメ）：共感と合理の真っ向からの衝突",
+      "→ペンギンが「人の気持ち」を語るほどサメが「要件にない」と切り返し、学生時代は議論の温度差で前に進まず、実務でも利用者視点と論理主義が噛み合わず毎回調整が必要なストレスフルなペア。",
+      "解決策：ペンギンは利用者視点や感情を文章ではなく図やフローで示し、サメはそれを要件にどう効くかで評価すると噛み合いやすい。"
+    ]
+  },
+  "RFCP": {
+    "code": "RFCP",
+    "creature": "プランフグ",
+    "english": "Plan Puffer",
+    "emoji": "🐡",
+    "tagline": "安定と丁寧さで空間を整える堅実設計者。",
+    "color": "#FFA726",
+    "description": "真面目で丁寧、人に安心感を与えるタイプ。派手さはないが、図面・資料・工程など基本をしっかり押さえる。責任感が強く、納期を守るタイプ。サポート役として優秀で、チームにひとりいると安定する。丁寧で読みやすい図面が特徴で、頼まれた作業を確実にこなす堅実な努力家。線のムラがなく、提出物をきっちりまとめる安定感があるため、グループ課題では自然と「最後に整えてくれる人」として信頼される。一方、自分から大胆な案を出すことは少なく、保守的にまとまりすぎてしまうことも。学生時代は荒いスケッチや大胆な模型で遊ぶ日をつくると、強みの丁寧さがさらに際立つ。",
+    "strengths": [
+      "丁寧さと正確性",
+      "堅実な図面作成",
+      "スケジュールを守る",
+      "聞き役が得意"
+    ],
+    "weaknesses": [
+      "アイデア創出はやや苦手",
+      "強い主張ができない",
+      "急な方針転換に弱い"
+    ],
+    "archi_anecdotes": [
+      "図面がとにかく丁寧",
+      "講評会で「基本がしっかりしてる」と褒められる",
+      "作業スペースがいつもきれい",
+      "付箋・マーカーなど道具が整っている",
+      "模型は地味だけど精度が安定して高い",
+      "無茶ぶりされても真面目にやる",
+      "徹夜するときは静かに淡々と作業"
+    ],
+    "career": [
+      "意匠設計／設計監理",
+      "ハウスメーカー・工務店で安定活躍",
+      "公共系案件でも信頼されるタイプ"
+    ],
+    "group_role": [
+      "トレース・図面整理",
+      "資料のフォーマット作成",
+      "スケジュール表の管理",
+      "実現性の検討（地味に超大事）"
+    ],
+    "work_scene": [
+      "机には整理された図面と付箋。上司の指示を正確に整理し、丁寧に仕上げていく。作業スピードは速くないが、品質は安心の安定型。",
+      "トレース作業が好き",
+      "納まり図を丁寧に描きがち",
+      "デスクの整頓が習慣"
+    ],
+    "compatibility_good": [
+      "VFIP（フィッシュ）：丁寧 × 美意識の精密アートライン",
+      "→ フグの緻密で丁寧な作業にフィッシュの繊細な美意識が加わり、学生時代は細部が驚くほど綺麗な完成度の高い作品が出来上がり、実務でも図面の精度や資料の美しさが群を抜く静かな実力派ペアとなる。",
+      "VSIP（カメ）：誠実作業 × 慎重検討の堅実タッグ",
+      "→ フグの丁寧な作業にカメの慎重な検討が重なり、学生時代はミスの少ない安心感ある成果物が生まれ、実務でも地道に精度と信頼を積み上げ続ける堅実さ満点の補完コンビとなる。"
+    ],
+    "compatibility_bad": [
+      "VSIE（イカ）：丁寧の限界とスピードの暴走",
+      "→ 慎重に作業したいフグと高速で試作したいイカが噛み合わず、学生時代は方向転換の速さにフグが疲れ、実務でもイカの実験量に丁寧さが追いつかないスピード差コンビ。",
+      "解決策：イカの新案は数を絞り、フグが一つずつ丁寧に整理する流れにすると、雑さと丁寧さのズレを抑えられる。"
+    ]
+  },
+  "RFIE": {
+    "code": "RFIE",
+    "creature": "フィールドラッコ",
+    "english": "Field Otter",
+    "emoji": "RFIE｜フィールドラッコ（Field",
+    "tagline": "手を動かしながら考える柔軟な現場派。",
+    "color": "#EF5350",
+    "description": "座って考えるより触って理解する実践型。好奇心旺盛で行動が早く、現場に出るとスイッチが入るタイプ。図面より現物で理解する傾向が強い。人懐っこく、現場の職人さんから可愛がられる。手を動かしながら考える実践型で、図面よりも模型・スタディの量で勝負する傾向。材料を切りながら「これ実際どう建つ？」と自然に構法を考え始め、模型の説得力が高い。ただし理論の整理やコンセプト言語化が後回しになりがちで、講評会で説明が追いつかないこともある。将来的には現場・工務店系や実験系の領域で強みが発揮されるが、学生のうちに座学的な整理を一度やってみると作品の説得力が倍増する。",
+    "strengths": [
+      "現場対応能力が高い",
+      "柔軟性と行動力",
+      "観察力／試行錯誤タイプ",
+      "本質を体感して理解する"
+    ],
+    "weaknesses": [
+      "机上作業が長く続かない",
+      "論理的資料が苦手",
+      "調整業務の資料化が遅れがち"
+    ],
+    "archi_anecdotes": [
+      "まず模型を作って理解しようとする",
+      "職人さん体質で細部に強い",
+      "現場見学が大好き",
+      "図面より形を先に決めるタイプ",
+      "教員に「模型はいいね、図面もう少し」と言われがち",
+      "自分でも気づかないうちに作業量が多い",
+      "無意識で工具を使うのが上手い"
+    ],
+    "career": [
+      "施工管理／現場監理／設計補助",
+      "リノベ会社・工務店で大活躍",
+      "住宅系の細かな対応に強い"
+    ],
+    "group_role": [
+      "模型制作",
+      "実現性の検証（現場感覚で強い）",
+      "素材・構法の検討",
+      "製作系のタスク全般"
+    ],
+    "work_scene": [
+      "現場で詳細を確認しながら「ここはどう納まる？」と職人と議論。サンプルを触りまくって理解し、帰社するとスケッチで一気にまとめる。",
+      "サンプルを触る時間が長い",
+      "現場のほうが集中できる",
+      "模型の作り方が大胆"
+    ],
+    "compatibility_good": [
+      "VSIE（イカ）：実験 × 技術の現場系イノベーター",
+      "→ ラッコの手を動かし続ける実験力にイカの技術的な試行が合わさり、学生時代は模型・試験・実験の量が圧倒的で説得力のある動きのある作品が生まれ、実務でも現場検証や新技術導入に非常に強い実践型ペア。",
+      "RFCE（ペンギン）：現場感 × 生活感のあたたかい作品",
+      "→ ラッコが実際に手を動かしながら空間を作り、ペンギンが人の視点を添えることで学生時代はリアルさと優しさを兼ね備えた作品が生まれ、実務でも居心地と現場感の両立が実現する温度の高いチーム。"
+    ],
+    "compatibility_bad": [
+      "RSIP（シャチ）：手の速さと考察の深さのすれ違い",
+      "→ ラッコが手を動かして案を進めるほど、シャチはもう少し深く考えたい気持ちになり、学生時代は完成リズムが揃わず、実務でも検証量と慎重思考が噛み合わない微妙な相性。",
+      "解決策：ラッコの即行動を小さな単位に分け、シャチが最後に全体を分析・判断する形にすると噛み合いやすい。"
+    ]
+  },
+  "RFIP": {
+    "code": "RFIP",
+    "creature": "クラフトカワウソ",
+    "english": "Craft Otter",
+    "emoji": "🦦",
+    "tagline": "職人技と誠実さで形を磨く努力家。",
+    "color": "#FF8A65",
+    "description": "コツコツ型で努力家。手仕事や細部に愛が深く、ものづくりそのものが好き。派手な主張はしないが、丁寧さと継続力で確実に成長するタイプ。控えめだが信頼度は非常に高い。模型や細部の作業が得意で、カッターや紙の扱いが驚くほど丁寧なクラフト職人型。細かいパーツの精度が高く、仕上げの美しさで教授から褒められやすい一方、細部に没頭しすぎて全体の進行が遅くなることがある。図面もゆっくりだが綺麗で、安定感がある。ただし全体構成や大胆な方向転換が苦手なため、学生時代は全体像を粗く一度固めてから細部に入る癖をつけると一気に強くなる。",
+    "strengths": [
+      "職人気質で細部のこだわりが強い",
+      "継続力と誠実さ",
+      "仕上げの品質に強いこだわり",
+      "人の信頼を得やすい"
+    ],
+    "weaknesses": [
+      "スピードが遅い",
+      "マルチタスクが苦手",
+      "自己主張が控えめ"
+    ],
+    "archi_anecdotes": [
+      "手を動かす作業が好き",
+      "素材研究が好き",
+      "仕上げの美しさにこだわりが強い",
+      "作業速度は遅いが確実に仕上がる",
+      "じっくり考えるので話しかけるとちょっと驚く",
+      "教員に「細部が綺麗」と褒められる",
+      "静かに長時間作業できるタイプ"
+    ],
+    "career": [
+      "意匠設計／家具制作／プロダクト開発",
+      "工務店／木工所／建材メーカー"
+    ],
+    "group_role": [
+      "模型仕上げ",
+      "細部の作り込み",
+      "図面の調整",
+      "マテリアルや仕上げ選定"
+    ],
+    "work_scene": [
+      "木材サンプルを並べながらじっくり検討。図面も丁寧に描き、現場に行けば職人と一緒に納まりを確認。時間はかかるが、仕上げの精度は非常に高い。",
+      "手の汚れを気にしない",
+      "素材にこだわりすぎる",
+      "仕上げチェックが厳しい"
+    ],
+    "compatibility_good": [
+      "VFIP（フィッシュ）：細部職人 × 美意識の手仕事最強",
+      "→ ラッコの強すぎる手先の器用さにフィッシュの美意識が合わさり、学生時代は模型・図面の細部が驚異の完成度に達し、実務でも精密なプロダクトや仕上げを要する案件で最強クラスの職人ペアになる。",
+      "RFCP（フグ）：手仕事 × 丁寧の安心精度",
+      "→ラッコの手作業力をフグの丁寧な積み上げが支え、学生時代は破綻のない精密な資料が生まれ、実務でも緻密な調整や図面の正確さが求められる工程で絶対的な信頼感を発揮する。"
+    ],
+    "compatibility_bad": [
+      "VSIE（イカ）：緻密作業が高速変更に崩壊する",
+      "→イカが高速で形を変えるたびラッコの丁寧な手作業が追いつかず学生時代は完成形が安定せず、実務でも試作スピードとクラフト精度が完全に噛み合わない危険なペア。",
+      "解決策：イカが変更を加える前に一声かけ、カワウソが「ここから先は触らない範囲」を宣言するだけで、手仕事とスピードの衝突を防げる。"
+    ]
+  },
+  "RSCE": {
+    "code": "RSCE",
+    "creature": "ラショナルシロクマ",
+    "english": "Rational White Bear",
+    "emoji": "🐻‍❄️",
+    "tagline": "ロジカルに世界を整理する知恵者。",
+    "color": "#1565C0",
+    "description": "最も理論的に美しさを構築するタイプ。情報を俯瞰して整理し、論理的な構造から美を導く戦略家。図解・フロー・概念マップなどを駆使して複雑な内容を的確に咀嚼し、機能的かつ洗練されたアウトプットをつくる。無駄を削ぎ落とした設計には、静かな知性と意志がにじみ出ており、「地味なのに洗練されている」「なんか綺麗」と言われやすい。抽象的な世界観には乗り切れないが、論理に裏付けされた美しさをつくる才能は圧倒的。スタジオでは静かに作業しているのに、提出日に完成度で殴ってくるタイプ。本質を見抜く冷静な視点と、課題を改善に転じる査読力が光る。学生時代に感性だけで設計する日を試すことで、理論と感性の融合が進み、大きな飛躍を遂げるタイプ。",
+    "strengths": [
+      "分析が得意",
+      "デザインの根拠を構造化して説明できる",
+      "判断にブレがない",
+      "効率化・システムづくりが得意"
+    ],
+    "weaknesses": [
+      "デザイン議論でどこまでが美しく合理的か迷いがち",
+      "直感的すぎる作品には疑問を持つ",
+      "細かすぎて厳しいと誤解されることも",
+      "根拠のない感情だけの話題が苦手"
+    ],
+    "archi_anecdotes": [
+      "「人がどう使うか」をずっと考えている",
+      "口数は少ないが、核心を突いた指摘が鋭い",
+      "A1の構図に美しさと整理が両立している",
+      "パースに余白が多いのに説得力がある",
+      "色数が極端に少ない（白・黒・1アクセント色）",
+      "現地調査シートが異常に読みやすい",
+      "学生なのに実務的な図面を描きがち"
+    ],
+    "career": [
+      "リノベーション系意匠／構造設計／都市・公共の機能改善型デザイン",
+      "大手ゼネコンのリニューアル部門／用途変更・既存建築の分析・動線改善",
+      "設計の技術統括・品質管理"
+    ],
+    "group_role": [
+      "デザインの方向性を定義する",
+      "機能図・動線計画・構成案の作成",
+      "図面・資料のビジュアルバランス調整",
+      "分析・比較表の作成",
+      "最終成果物の美しさの最適化担当"
+    ],
+    "work_scene": [
+      "既存建物の問題を冷静に洗い出し、「どう置き換えれば機能的で、美しいか？」を淡々と組み立てていく。会議では静かだが、必要な時にだけ論理的なコメントを落とす重みのある存在。",
+      "美しい＝整理されているが完全に一致している",
+      "無意識に常に「最適解」を探している",
+      "職場で「一番冷静」と言われがち"
+    ],
+    "compatibility_good": [
+      "VSCE（サメ）：論理 × 体系化の計算し尽くされた最強ロジック",
+      "→ 設計の論点を言語化するサメと、論理から美しさをつくるシロクマは、",
+      "機能性と美しさが高い次元で両立した作品を生む最強コンビ。",
+      "VFCP（クジラ）：ロジックに構成力が乗る堅実ライン",
+      "シロクマの徹底した分析にクジラの構成力が加わり、学生時代は読みやすい資料が完成し、実務でも整った書類・安定した進行・破綻しない設計でクライアントの信頼を集める堅実補完コンビとなる。"
+    ],
+    "compatibility_bad": [
+      "VFIE（タコ）：ロジックと衝動の言語断絶",
+      "→タコの感性重視の案変更にシロクマの理詰め思考が全く追いつかず、学生時代は議論が平行線を辿り、実務でもアート性と論理性が衝突して毎回長時間の通訳会議になる危険な組み合わせ。",
+      "解決策：タコの案を確定案ではなく仮説として扱い、シロクマが論理で磨き上げる役割に回ると、対立せずに完成度が上がる。"
+    ]
+  },
+  "RSCP": {
+    "code": "RSCP",
+    "creature": "ビルダーワニ",
+    "english": "Builder Alligator",
+    "emoji": "🐊",
+    "tagline": "統率と実行力で現場を制するリーダー。",
+    "color": "#558B2F",
+    "description": "現場力と管理力を併せ持つ、頼れるリーダー。危険予知・判断スピード・統率力が高く、施工現場で圧倒的な信頼を得るタイプ。豪快に見えて細かい部分もよく見ている。現実的な視点で設計を進めるタイプで、「これ実際に建つ？」を最初に考える堅実派。作業中は集中力が高く、構造や納まりの理解が早いため、講評会でも「現実的」「説得力がある」と言われやすい。一方、表現の華やかさや遊び心は控えめで、実務っぽさが学生のうちから出すぎることもある。学生時代は、意図的に大胆な形や世界観に挑戦してみると設計の伸びしろが一気に広がる。",
+    "strengths": [
+      "リーダーシップが強い",
+      "現場の統率力が高い",
+      "調整能力も兼備",
+      "短期間で状況を判断できる"
+    ],
+    "weaknesses": [
+      "感覚型の案が苦手",
+      "衝突が起きると強めに出がち",
+      "忙しいと詰めの甘さが出る"
+    ],
+    "archi_anecdotes": [
+      "施工見学・現場系の授業が異常に好き",
+      "講評会の質疑に強い（冷静に答えられる）",
+      "図面の現実感が強い",
+      "作業の段取りがうまい",
+      "チームで揉め事が起きると自然にリーダー役",
+      "口数は多くないが決断が早い",
+      "提出前日の「あとこれだけやろう」をまとめる天才"
+    ],
+    "career": [
+      "構造設計／施工管理／プロジェクトマネージャー",
+      "ゼネコンの現場所長",
+      "官公庁の工事発注部門"
+    ],
+    "group_role": [
+      "現実性の整理",
+      "タスク・作業工程管理",
+      "講評会での説明役（実務的）",
+      "図面の詰めるべき点の判断"
+    ],
+    "work_scene": [
+      "現場で職人・設計者・監督をまとめあげる空気を変える存在。判断が早く、ヘルメット姿がよく似合う。構造にも強く、力学や施工性を踏まえた提案は実現性が高い。現場と設計の橋渡しができ目立たずとも、信頼され、現場に安心感をもたらす存在。",
+      "指示が短くて的確",
+      "現場での歩くスピードが早い",
+      "安全靴が妙に似合う"
+    ],
+    "compatibility_good": [
+      "VSCP（アザラシ）：現場 × 調整のプロジェクト最強運営",
+      "→ ワニの現実的な判断とアザラシの調整力が組み合わさり、学生時代はチームの進行が圧倒的にスムーズで、実務でも現場・書類・調整が破綻なく進む管理力と実務力が頂点に達する最強運営ペア。",
+      "RSCE（シロクマ）：現実判断 × 論理整理の実務特化",
+      "→ワニが現実的な方針を示し、シロクマがそれを要件に落とし込むことで、学生時代は読みやすい資料が生まれ、実務でも現場と設計の橋渡しが完璧に機能する強力な実務補完コンビ。"
+    ],
+    "compatibility_bad": [
+      "VFCE（イルカ）：現実と世界観の完全衝突",
+      "→ イルカが感性で語るたびにワニが現実面で切り返すため学生時代は何度も議論が振り出しに戻り、実務でも施工性と世界観が噛み合わず永遠にまとまらない会議が続く危険な相性。",
+      "解決策：イルカは理想案を、ワニは実現案をそれぞれ並べて出し、どちらが適切かを比較する形にすると感情的な衝突を避けられる。"
+    ]
+  },
+  "RSIE": {
+    "code": "RSIE",
+    "creature": "テックガニ",
+    "english": "Tech Crab",
+    "emoji": "🦀",
+    "tagline": "技術と発想を両立させる研究肌の開拓者。",
+    "color": "#0288D1",
+    "description": "好奇心と技術力のハイブリッド。数字も図面も好きだが、同時に新しいものにも目がない。研究的な深堀りと遊び心が同居するタイプで、建材やデジタル技術の可能性にワクワクする。研究室の機材や解析ツールと相性がよく、環境・構造・実験系のアプローチに強い理系寄りタイプ。グラフ・シミュレーション・性能比較など数字が語る資料で講評会の説得力を引き上げられる一方、作品としての華やかさや感覚的な世界観は後回しになりがち。学生のうちに表現の練習を少し取り入れるだけで、研究力とデザイン力の両輪が揃った強い設計者になれる。",
+    "strengths": [
+      "研究力の高さ",
+      "技術開発の素質",
+      "改善・改良が得意",
+      "深い思考と遊び心"
+    ],
+    "weaknesses": [
+      "飽きっぽい",
+      "ルーティンが苦手",
+      "情報収集に偏りが出る"
+    ],
+    "archi_anecdotes": [
+      "環境工学や解析ソフトに強い",
+      "データを見るとテンション上がる",
+      "気づいたら新素材の論文を読んでいる",
+      "提出資料に性能比較や数値グラフを入れがち",
+      "研究室の教授から気に入られやすい",
+      "実験系授業で本気を出すタイプ",
+      "一人で深掘りして作品レベルが突然上がる"
+    ],
+    "career": [
+      "研究開発／BIMエンジニア／技術職",
+      "大学研究室／建材メーカー／システムエンジニア",
+      "構造・設備の高度解析"
+    ],
+    "group_role": [
+      "技術検証",
+      "環境シミュレーション",
+      "デジタルデザイン",
+      "論理補強のための比較資料づくり"
+    ],
+    "work_scene": [
+      "試験機の前でデータを取ったり、新素材サンプルを並べて楽しそうに分析する姿が目に浮かぶ。BIMやデジタルツールを誰よりも早く使いこなす。",
+      "データ取りになると急に元気",
+      "新しい建材カタログを読むのが好き",
+      "PCのショートカットを多用"
+    ],
+    "compatibility_good": [
+      "VSIE（イカ）：技術 × 技術の先端開拓最強タッグ",
+      "→ カニの技術探究心とイカの革新力が噛み合い、学生時代は試作・検証・実験のレベルが異常に高く、実務でも新技術導入やBIM開発などで唯一無二の成果を出す先端型の最強ペアとなる。",
+      "RSCE（シロクマ）：技術思考 × ロジックの情報強者",
+      "→カニの技術解像度にシロクマの論理構築が重なり、学生時代は思想と実装が綺麗につながった作品が生まれ、実務でも技術の裏付けと整った資料が揃う堅固な実力ペアとなる。"
+    ],
+    "compatibility_bad": [
+      "VFIE（タコ）精密技術 × 爆発感性の大事故ライン",
+      "→タコが衝動で方向転換するたびカニの技術的検討が全てリセットされ、学生時代は混乱続きで、実務でも技術整合が崩れやすく手戻り地獄が発生する危険な相性。",
+      "解決策：タコは変更の理由を必ず言葉で説明し、カニは技術的に難しい点を図で示すことで、感覚と技術の断絶を埋められる。"
+    ]
+  },
+  "RSIP": {
+    "code": "RSIP",
+    "creature": "アナライズシャチ",
+    "english": "Analyze Orca",
+    "emoji": "🐋",
+    "tagline": "理論で美を構築する静かな分析家。",
+    "color": "#7B1FA2",
+    "description": "静かで控えめだが、内面は極めて理論的。建築の美を感覚でなく構造や仕組みの美として捉える。感情表現は少ないが、深い思考力と持続力を持つ静かなる職人。誰より静かに深く考える思索型で、図面も説明も一貫して論理的。表現が控えめでも図面の精度と合理性が高く、講評会では「よく考えている」と評価されやすい。自分のペースでじっくり案を詰められる一方、チーム作業では目立たず、改善案を裏でこっそり直す影の功労者になりがち。学生時代は、あえてプレゼンや初期構想に前に出る経験をすると、思考の深さがより活かされる。",
+    "strengths": [
+      "深い理論構築力",
+      "静かな集中力",
+      "長期的な継続作業が得意",
+      "論理的な美学の探求"
+    ],
+    "weaknesses": [
+      "口数が少ないため誤解されやすい",
+      "スピード感には弱い",
+      "打合せで主張しにくい"
+    ],
+    "archi_anecdotes": [
+      "作業中ほぼ無言",
+      "気づくと図面の細部が異常に整っている",
+      "ノートがきれいすぎる",
+      "質疑でやたら論理的に答えるので教授に褒められる",
+      "大人数議論が苦手",
+      "作業スピードはゆっくりだが精度は最強",
+      "「あの人いつの間にこんな仕上げたの…？」と言われる"
+    ],
+    "career": [
+      "構造設計／設備設計",
+      "研究機関／技術検証業務",
+      "設計の品質管理ポジション"
+    ],
+    "group_role": [
+      "図面の精度担当",
+      "整合チェック",
+      "論理的な設計説明",
+      "細部の美しさの追求"
+    ],
+    "work_scene": [
+      "デスクで静かに構造計算や整合チェックを続ける姿が象徴的。現場でも、数値に基づいた的確な指摘をするため信頼度は高い。",
+      "図面を静かに修正し続ける",
+      "余白・配置・整合を異常に気にする",
+      "資料のフォルダ整理が得意"
+    ],
+    "compatibility_good": [
+      "VSIP（カメ）：深い思索 × 丁寧積み上げの無敵安定",
+      "→ シャチの深い分析にカメの緻密な積み上げが組み合わさり、学生時代は破綻のない作品を確実に作り上げ、実務でも品質・整合・丁寧な判断が揃う静かに最強の堅実コンビとなる。",
+      "RFCP（フグ）：分析 × 丁寧の高精度ライン",
+      "→シャチの分析力にフグの丁寧さが加わり、学生時代は資料や模型が安定し、実務でも間違いのない図面と判断が自然と積み上がる堅牢な補完関係。"
+    ],
+    "compatibility_bad": [
+      "RFIE（ラッコ）：考えたい × まず動きたい の速度差",
+      "→シャチの深く考える時間がラッコのまず手を動かす行動力と噛み合わず、学生時代は作業の方向性が揃いにくく、実務でも検証と思考のリズムが合わない組み合わせ。",
+      "解決策：ラッコの案数を2つまでに制限し、シャチが最後に分析・判断を行う流れにすることで、議論が無限ループに陥らずに済む。"
+    ]
+  }
+};
+
+// ── State ─────────────────────────────────────────────────
+let currentQ = 0;
+let answers = {};
+let selectedVal = null;
+
+// ── Init bubbles & fish ───────────────────────────────────
+(function initDeco() {
+  const layer = document.getElementById('deco-layer');
+  const bubbleColors = [
+    "rgba(180,235,248,","rgba(140,215,240,","rgba(200,240,252,",
+    "rgba(255,235,140,","rgba(160,225,245,","rgba(210,245,252,"
+  ];
+  for (let i = 0; i < 22; i++) {
+    const size = 8 + Math.random() * 40;
+    const left = Math.random() * 100;
+    const delay = Math.random() * 10;
+    const dur = 6 + Math.random() * 10;
+    const op = 0.15 + Math.random() * 0.25;
+    const col = bubbleColors[i % bubbleColors.length];
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    Object.assign(b.style, {
+      width: size+'px', height: size+'px',
+      bottom: -size+'px', left: left+'%',
+      border: `1.5px solid ${col}${op*2})`,
+      background: `${col}${op})`,
+      animationDuration: dur+'s',
+      animationDelay: delay+'s'
+    });
+    layer.appendChild(b);
+  }
+  const fishArr = ['🐠','🐡','🐟','🦐','🦀','🐙'];
+  for (let i = 0; i < 5; i++) {
+    const top = 10 + Math.random() * 75;
+    const delay = Math.random() * 15;
+    const dur = 20 + Math.random() * 20;
+    const sz = 18 + Math.random() * 16;
+    const f = document.createElement('div');
+    f.className = 'fish';
+    f.textContent = fishArr[i % fishArr.length];
+    Object.assign(f.style, {
+      top: top+'%', left: '-60px', fontSize: sz+'px',
+      opacity: 0.18 + Math.random()*0.12,
+      animationDuration: dur+'s', animationDelay: delay+'s'
+    });
+    layer.appendChild(f);
+  }
+})();
+
+// ── Quiz logic ────────────────────────────────────────────
+function startQuiz() {
+  document.getElementById('page-intro').style.display = 'none';
+  document.getElementById('page-quiz').style.display = 'flex';
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = questions[currentQ];
+  document.getElementById('q-label').textContent = `Q.${currentQ+1}`;
+  document.getElementById('q-text-a').textContent = q.A;
+  document.getElementById('q-text-b').textContent = q.B;
+  document.getElementById('quiz-counter').textContent =
+    String(currentQ+1).padStart(2,'0') + ' / ' + String(questions.length).padStart(2,'0');
+  document.getElementById('progress-fill').style.width =
+    ((currentQ+1)/questions.length*100) + '%';
+  document.getElementById('btn-back').disabled = currentQ === 0;
+
+  // restore previous answer if exists
+  selectedVal = answers[currentQ] !== undefined ? answers[currentQ] : null;
+  updateOptStyles();
+
+  const isLast = currentQ === questions.length - 1;
+  document.getElementById('btn-next').textContent = isLast ? '診断結果を見る →' : '次の質問 →';
+}
+
+function selectOpt(val) {
+  selectedVal = val;
+  updateOptStyles();
+}
+
+function updateOptStyles() {
+  const classes = ['selected-a1','selected-a2','selected-b2','selected-b1'];
+  for (let i = 0; i < 4; i++) {
+    const btn = document.getElementById('opt'+i);
+    btn.className = 'opt-btn' + (selectedVal === i ? ' '+classes[i] : '');
+    // rebuild dot
+    btn.querySelector('.opt-dot').style.background =
+      selectedVal === i
+        ? (i < 2 ? 'rgba(0,140,200,.6)' : 'rgba(200,140,0,.6)')
+        : 'rgba(0,100,160,.3)';
+  }
+  const nextBtn = document.getElementById('btn-next');
+  nextBtn.classList.toggle('active', selectedVal !== null);
+}
+
+function nextQuestion() {
+  if (selectedVal === null) return;
+  answers[currentQ] = selectedVal;
+
+  const card = document.getElementById('question-card');
+  card.classList.add('slide-out');
+
+  setTimeout(() => {
+    card.classList.remove('slide-out');
+    if (currentQ < questions.length - 1) {
+      currentQ++;
+      selectedVal = null;
+      renderQuestion();
+    } else {
+      showResult();
+    }
+  }, 320);
+}
+
+function goBack() {
+  if (currentQ === 0) return;
+  currentQ--;
+  selectedVal = answers[currentQ];
+  renderQuestion();
+}
+
+// ── Scoring ───────────────────────────────────────────────
+function getAnswerWeight(answerIndex) {
+  return {
+    aScore: answerIndex === 0 ? 2 : answerIndex === 1 ? 1 : 0,
+    bScore: answerIndex === 3 ? 2 : answerIndex === 2 ? 1 : 0
+  };
+}
+
+function calculateAxisScores() {
+  const axisScores = {
+    worldview: { a: 0, b: 0 },
+    value: { a: 0, b: 0 },
+    workstyle: { a: 0, b: 0 },
+    process: { a: 0, b: 0 }
+  };
+
+  questions.forEach((question, index) => {
+    const answer = answers[index];
+    if (answer === undefined) return;
+
+    const { aScore, bScore } = getAnswerWeight(answer);
+    if (!axisScores[question.axis]) return;
+
+    axisScores[question.axis].a += aScore;
+    axisScores[question.axis].b += bScore;
+  });
+
+  return axisScores;
+}
+
+function getTypeCode(axisScores) {
+  return AXES.map(axis => {
+    const score = axisScores[axis.key];
+    return score.a >= score.b ? axis.codeA : axis.codeB;
+  }).join('');
+}
+
+function calculateResult() {
+  const axisScores = calculateAxisScores();
+  const code = getTypeCode(axisScores);
+  return results[code] || results['VFCE'];
+}
+
+
+function renderAxisBars(axisScores) {
+  const container = document.getElementById('axis-result');
+  container.innerHTML = AXES.map(axis => {
+    const a = axisScores[axis.key].a;
+    const b = axisScores[axis.key].b;
+    const total = a + b;
+    const percent = total === 0 ? 50 : Math.round((a / total) * 100);
+    return `
+      <div class="axis-block">
+        <div class="axis-title">${axis.label}</div>
+        <div class="axis-bar">
+          <div class="axis-left">${axis.nameA}</div>
+          <div>
+            <div class="axis-meter"><div class="axis-fill" style="width:${percent}%"></div></div>
+            <div class="axis-score">${axis.codeA} ${a} : ${b} ${axis.codeB}</div>
+          </div>
+          <div class="axis-right">${axis.nameB}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderDetailList(items, targetId) {
+  document.getElementById(targetId).innerHTML = items
+    .map(item => `<div class="detail-item">${item}</div>`)
+    .join('');
+}
+
+function parseCompatibilityItem(text) {
+  const cleaned = text.trim();
+  const match = cleaned.match(/^・?([^：]+)：\s*(.+)$/);
+  if (!match) return { title: cleaned, body: '', note: '' };
+  const rest = match[2].split(' | 解決策：');
+  return {
+    title: match[1].trim(),
+    body: rest[0].trim(),
+    note: rest[1] ? `解決策：${rest[1].trim()}` : ''
+  };
+}
+
+function renderCompatibility(items, targetId) {
+  document.getElementById(targetId).innerHTML = items.map(item => {
+    const parsed = parseCompatibilityItem(item);
+    return `<div class="compat-item"><strong>${parsed.title}</strong><div>${parsed.body}</div>${parsed.note ? `<small>${parsed.note}</small>` : ''}</div>`;
+  }).join('');
+}
+
+function buildShareText(result) {
+  return `ARCHIme 建築タイプ診断
+
+私のタイプは ${result.emoji} ${result.creature} (${result.code})
+${result.tagline}
+
+#ARCHIme #建築タイプ診断`;
+}
+
+
+function setShareStatus(message) {
+  const el = document.getElementById('share-status');
+  if (el) el.textContent = message || '';
+}
+
+function buildLineShareText(result) {
+  return `ARCHIme 建築タイプ診断
+${result.emoji} ${result.creature} (${result.code})
+${result.tagline}`;
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function createShareCardMarkup(result, axisScores) {
+  const bubbleMarkup = [
+    { left: 70, top: 100, size: 90 },
+    { left: 930, top: 140, size: 58 },
+    { left: 120, top: 1080, size: 42 },
+    { left: 900, top: 1020, size: 110 },
+    { left: 860, top: 300, size: 36 }
+  ].map(b => `<div class="share-card-bubble" style="left:${b.left}px;top:${b.top}px;width:${b.size}px;height:${b.size}px;"></div>`).join('');
+
+  const axisMarkup = AXES.map(axis => {
+    const score = axisScores[axis.key];
+    const total = score.a + score.b;
+    const percent = total === 0 ? 50 : Math.round((score.a / total) * 100);
+    return `
+      <div class="share-card-axis">
+        <div class="share-card-axis-head"><span>${escapeHtml(axis.nameA)}</span><span>${escapeHtml(axis.nameB)}</span></div>
+        <div class="share-card-meter"><div class="share-card-fill" style="width:${percent}%"></div></div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="share-card-stage">
+      ${bubbleMarkup}
+      <div class="share-card-shell">
+        <div class="share-card-brand">ARCHIme</div>
+        <div class="share-card-sub">建築タイプ診断</div>
+        <div class="share-card-code">${escapeHtml(result.code)}</div>
+        <div class="share-card-emoji">${escapeHtml(result.emoji)}</div>
+        <div class="share-card-name">${escapeHtml(result.creature)}</div>
+        <div class="share-card-en">${escapeHtml(result.english)}</div>
+        <div class="share-card-tagline">${escapeHtml(result.tagline)}</div>
+        <div class="share-card-bar-wrap">${axisMarkup}</div>
+        <div class="share-card-footer">
+          <div>あなたの建築タイプ結果</div>
+          <div class="share-card-hash">#ARCHIme</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function exportElementToPng(element, width, height) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+      <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;">${element.outerHTML}</div>
+      </foreignObject>
+    </svg>`;
+  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await loadImage(url);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    return new Promise((resolve) => {
+      canvas.toBlob((blobOut) => resolve(blobOut), 'image/png');
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function generateShareImage(result, axisScores) {
+  const host = document.getElementById('share-card-canvas');
+  host.innerHTML = createShareCardMarkup(result, axisScores);
+  const stage = host.firstElementChild;
+  return exportElementToPng(stage, 1080, 1350);
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function setupShareButtons(result, axisScores) {
+  const shareX = document.getElementById('share-x');
+  const shareLine = document.getElementById('share-line');
+  const shareInstagram = document.getElementById('share-instagram');
+  const shareSave = document.getElementById('share-save');
+
+  if (shareX) {
+    shareX.onclick = () => {
+      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(buildShareText(result))}&url=${encodeURIComponent(window.location.href)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    };
+  }
+
+  if (shareLine) {
+    shareLine.onclick = () => {
+      const shareUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(window.location.href)}`;
+      window.open(shareUrl, '_blank', 'noopener,noreferrer');
+      setShareStatus(`LINEで共有しやすいように、共有文の候補はこちらです。 ${buildLineShareText(result)}`);
+    };
+  }
+
+  const saveHandler = async (isInstagram) => {
+    try {
+      setShareStatus(isInstagram ? 'Instagram用の画像を作成しています…' : '結果画像を作成しています…');
+      const blob = await generateShareImage(result, axisScores);
+      if (!blob) throw new Error('image generation failed');
+      downloadBlob(blob, `ARCHIme-${result.code}.png`);
+      setShareStatus(isInstagram ? '画像を保存しました。Instagramの投稿やストーリーズにそのまま使えます。' : '結果画像を保存しました。');
+    } catch (error) {
+      console.error(error);
+      setShareStatus('画像の保存に失敗しました。別ブラウザでもう一度お試しください。');
+    }
+  };
+
+  if (shareInstagram) shareInstagram.onclick = () => saveHandler(true);
+  if (shareSave) shareSave.onclick = () => saveHandler(false);
+}
+
+const CHARACTER_IMAGE_CONFIG = {
+  basePath: 'images/characters',
+  extensions: ['png', 'webp', 'jpg', 'jpeg', 'svg']
+};
+
+function getCharacterImageCandidates(result) {
+  const code = String(result.code || '').trim();
+  const variants = [code.toLowerCase(), code.toUpperCase()];
+  return CHARACTER_IMAGE_CONFIG.extensions.flatMap(ext =>
+    variants.map(name => `${CHARACTER_IMAGE_CONFIG.basePath}/${name}.${ext}`)
+  );
+}
+
+function renderResultVisual(result) {
+  const resultVisual = document.getElementById('result-emoji');
+  const candidates = getCharacterImageCandidates(result);
+
+  if (!candidates.length) {
+    resultVisual.textContent = result.emoji || '';
+    return;
+  }
+
+  let candidateIndex = 0;
+  const img = document.createElement('img');
+  img.alt = result.creature || result.code || 'character image';
+  img.className = 'result-character-image';
+
+  img.onerror = () => {
+    candidateIndex += 1;
+    if (candidateIndex < candidates.length) {
+      img.src = candidates[candidateIndex];
+    } else {
+      resultVisual.textContent = result.emoji || '';
+    }
+  };
+
+  resultVisual.innerHTML = '';
+  resultVisual.appendChild(img);
+  img.src = candidates[candidateIndex];
+}
+
+// ── Result ────────────────────────────────────────────────
+function showResult() {
+  const r = calculateResult();
+  const axisScores = calculateAxisScores();
+
+  document.getElementById('page-quiz').style.display = 'none';
+  document.getElementById('page-result').style.display = 'flex';
+
+  renderResultVisual(r);
+  document.getElementById('result-code-text').textContent = r.code.split('').join(' ');
+  const nameEl = document.getElementById('result-name');
+  nameEl.textContent = r.creature;
+  nameEl.style.background = `linear-gradient(135deg, #1a3a50, ${r.color})`;
+  nameEl.style.webkitBackgroundClip = 'text';
+  nameEl.style.webkitTextFillColor = 'transparent';
+  nameEl.style.backgroundClip = 'text';
+  document.getElementById('result-en').textContent = r.english;
+  document.getElementById('result-tagline').textContent = r.tagline;
+  document.getElementById('result-desc').textContent = r.description;
+
+  renderAxisBars(axisScores);
+
+  document.getElementById('result-strengths').innerHTML =
+    r.strengths.map(s=>`<div class="sw-item"><span>▲</span><span class="sw-item-text">${s}</span></div>`).join('');
+  document.getElementById('result-weaknesses').innerHTML =
+    r.weaknesses.map(s=>`<div class="sw-item"><span>▼</span><span class="sw-item-text">${s}</span></div>`).join('');
+  document.getElementById('result-anecdotes').innerHTML =
+    r.archi_anecdotes.map(a=>`<div class="anecdote-item">・${a}</div>`).join('');
+  document.getElementById('result-career').innerHTML =
+    r.career.map(c=>`<div class="career-tag">${c}</div>`).join('');
+  renderDetailList(r.group_role, 'result-group-role');
+  renderDetailList(r.work_scene, 'result-work-scene');
+  renderCompatibility(r.compatibility_good, 'result-compat-good');
+  renderCompatibility(r.compatibility_bad, 'result-compat-bad');
+
+  setupShareButtons(r, axisScores);
+
+  setTimeout(() => {
+    document.getElementById('result-page').classList.add('visible');
+  }, 80);
+}
+
+function restart() {
+  currentQ = 0; answers = {}; selectedVal = null;
+  document.getElementById('result-page').classList.remove('visible');
+  document.getElementById('page-result').style.display = 'none';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('page-intro').style.display = 'flex';
+}
+</script>
+</body>
+</html>

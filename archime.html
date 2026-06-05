@@ -1,0 +1,3479 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARCHIme | 建築タイプ診断</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;700;800;900&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=Oxygen+Mono&display=swap" rel="stylesheet">
+
+<!-- Three.js (3D), GSAP (animation), ScrollTrigger -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
+
+<!-- GA4: Replace G-XXXXXXXXXX with your Measurement ID -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
+
+<style>
+:root {
+  /* 16personalities.com — exact palette */
+  --c-blue: #4298b4;             /* Sentinel / primary */
+  --c-blue-dark: #2f7a93;
+  --c-blue-soft: #ecf4f7;
+  --c-purple: #88619a;           /* Analyst */
+  --c-purple-soft: #f0eaf3;
+  --c-green: #33a474;            /* Diplomat */
+  --c-green-soft: #e7f5ed;
+  --c-yellow: #e4ae3a;           /* Explorer */
+  --c-yellow-soft: #fbf3df;
+  --c-coral: #f25e62;            /* CTA / accent */
+  --c-coral-dark: #d54448;
+  --c-teal: #50a9aa;
+
+  --c-text: #51596a;             /* body text */
+  --c-heading: #343c4b;           /* headings */
+  --c-text-dim: #68707f;
+  --c-text-mute: #8a93a3;
+  --c-divider: #dddfe2;
+  --c-divider-soft: #eeeff1;
+  --c-bg: #f6f6f7;               /* off-white base */
+  --c-bg-alt: #f9f9f9;
+  --c-paper: #ffffff;
+
+  /* Per-type theming */
+  --type-color: var(--c-blue);
+  --type-color-soft: var(--c-blue-soft);
+  --type-color-deep: var(--c-blue-dark);
+  --type-bg: var(--c-blue-soft);
+
+  --shadow-sm: 0 2px 6px rgba(52,60,75,.06);
+  --shadow: 0 8px 24px rgba(52,60,75,.08), 0 2px 6px rgba(52,60,75,.04);
+  --shadow-lg: 0 16px 48px rgba(52,60,75,.14), 0 6px 20px rgba(52,60,75,.08);
+
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 16px;
+
+  --font-titles: 'Red Hat Display', 'Helvetica Neue', Arial, sans-serif;
+  --font-text: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --font-jp: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+  --font-mono: 'Oxygen Mono', 'JetBrains Mono', monospace;
+  --font-display: var(--font-titles);
+  --font-sans: var(--font-text);
+  --font-jp-serif: var(--font-jp);
+
+  /* Legacy aliases (so existing rules don't break) */
+  --bp-text: var(--c-text);
+  --bp-text-dim: var(--c-text-dim);
+  --bp-text-mute: var(--c-text-mute);
+  --bp-paper: var(--c-paper);
+  --bp-cyan: var(--c-blue);
+  --bp-cyan-soft: var(--c-blue-soft);
+  --bp-cyan-deep: var(--c-blue-dark);
+  --bp-cyan-pale: var(--c-blue-soft);
+  --bp-divider: var(--c-divider);
+  --bp-border: var(--c-divider);
+  --bp-border-strong: var(--c-divider);
+  --bp-paper-soft: var(--c-bg-alt);
+  --bp-accent: var(--c-coral);
+  --bp-accent-deep: var(--c-coral-dark);
+  --bp-warn: var(--c-yellow);
+  --bp-shadow: var(--shadow);
+  --bp-shadow-strong: var(--shadow-lg);
+  --bp-line: transparent;
+  --bp-line-major: transparent;
+  --bp-bg-1: var(--c-paper);
+  --bp-bg-2: var(--c-bg);
+  --bp-bg-3: var(--c-bg-alt);
+  --primary: var(--c-blue);
+  --primary-soft: var(--c-blue-soft);
+  --ink: var(--c-heading);
+  --ink-dim: var(--c-text-dim);
+  --ink-mute: var(--c-text-mute);
+  --paper: var(--c-paper);
+  --divider: var(--c-divider);
+  --bg-paper: var(--c-bg);
+  --bg-cream: var(--c-bg);
+  --bg-soft: var(--c-bg-alt);
+  --accent-red: var(--c-coral);
+  --accent-red-deep: var(--c-coral-dark);
+  --accent-yellow: var(--c-yellow);
+  --accent-black: var(--c-heading);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { background: var(--c-bg); }
+
+body {
+  min-height: 100vh;
+  background: var(--c-bg);
+  font-family: var(--font-text);
+  color: var(--c-text);
+  position: relative;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+/* ── Animations ── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeSlideOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-16px); }
+}
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes selectPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+@keyframes crosshairBlink {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.75; }
+}
+@keyframes drift {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(40px, 40px); }
+}
+@keyframes stampSettle {
+  0%   { transform: rotate(-12deg) scale(2.2); opacity: 0; }
+  60%  { transform: rotate(-6deg) scale(1.05); opacity: 1; }
+  100% { transform: rotate(-3deg) scale(1); opacity: 1; }
+}
+@keyframes dashScroll {
+  to { stroke-dashoffset: -200; }
+}
+@keyframes spinSlow {
+  to { transform: rotate(360deg); }
+}
+@keyframes spinReverse {
+  to { transform: rotate(-360deg); }
+}
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(1.3); }
+}
+@keyframes driftBg {
+  from { background-position: 0 0; }
+  to   { background-position: 120px 120px; }
+}
+
+/* ── Hide all blueprint/magazine chrome ── */
+#deco-layer, #grid-bg, #grid-vignette,
+.drafting-mark, .corner-bracket, #title-block, #sheet-stamp,
+.polygon, .poly-tl, .poly-br, .poly-circle-yellow { display: none; }
+
+/* ═══════════════════════════════════════════
+   16personalities SIGNATURE: polygon clip-paths
+   ═══════════════════════════════════════════ */
+.poly-clip-1 { clip-path: polygon(56.25% 0%, 10% 25%, 0% 75%, 47.5% 100%, 100% 81.25%, 93.75% 18.75%); }
+.poly-clip-2 { clip-path: polygon(56.25% 0%, 10% 12.5%, 0% 68.75%, 35% 100%, 100% 81.25%, 93.75% 18.75%); }
+.poly-clip-3 { clip-path: polygon(43.75% 0%, 0% 25%, 6.25% 81.25%, 60% 100%, 100% 75%, 93.75% 12.5%); }
+.poly-clip-4 { clip-path: polygon(43.75% 0%, 0% 31.25%, 12.5% 87.5%, 60% 100%, 93.75% 87.5%, 100% 31.25%, 87.5% 12.5%); }
+.poly-clip-scene-left  { clip-path: polygon(5% 19%, 55% 0, 95% 19%, 100% 81%, 51% 100%, 0 81%); }
+.poly-clip-scene-right { clip-path: polygon(0 24%, 50% 0, 100% 17%, 95% 81%, 45% 100%, 5% 83%); }
+.poly-clip-quote       { clip-path: polygon(10% 19%, 54% 0, 96% 17%, 100% 83%, 54% 100%, 0 74%); }
+
+/* Editorial section masthead */
+.masthead {
+  position: relative;
+  padding: 32px 24px 16px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+.masthead .issue {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.masthead h1.brand {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(48px, 12vw, 96px);
+  letter-spacing: -3px;
+  line-height: 0.9;
+  color: var(--ink);
+  font-style: italic;
+}
+.masthead .tagline-en {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 6px;
+  color: var(--accent-red);
+  text-transform: uppercase;
+  font-style: italic;
+  margin-top: 6px;
+}
+
+/* Rule line (editorial dividers) */
+.rule-thick {
+  height: 4px; background: var(--ink);
+  margin: 24px 0;
+}
+.rule-thin {
+  height: 1px; background: var(--ink);
+  margin: 16px 0; opacity: 0.5;
+}
+.rule-red {
+  height: 3px; background: var(--accent-red);
+  margin: 16px 0;
+}
+
+/* Editorial number callouts */
+.numero {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-red);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+/* Scroll progress (right edge thin line) */
+#scroll-progress-track {
+  position: fixed; right: 0; top: 0; bottom: 0;
+  width: 2px; z-index: 3;
+  background: rgba(180,225,255,0.06);
+  pointer-events: none;
+}
+#scroll-progress {
+  width: 100%; height: 0;
+  background: linear-gradient(180deg, var(--bp-cyan-soft), var(--bp-cyan), var(--bp-cyan-deep));
+  box-shadow: 0 0 8px rgba(95,184,230,.7);
+}
+
+/* Three.js canvas in intro */
+#intro-symbol canvas {
+  width: 100%; height: 100%; display: block;
+}
+
+/* WebGL particles bg (sits below content, above grid) */
+#bg-particles {
+  position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  mix-blend-mode: screen; opacity: .9;
+}
+
+/* Wireframe canvas behind result character */
+#result-elevation canvas.wireframe-canvas {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 0;
+}
+
+/* ── Friendly soft cards (16personalities-style) ── */
+.glass, .sheet {
+  background: var(--paper);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  position: relative;
+}
+.glass::before, .glass::after, .sheet::before, .sheet::after { display: none; }
+
+/* ── Layout ── */
+#app { position: relative; z-index: 2; }
+
+.page {
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 40px 20px 80px;
+}
+.page.quiz-page { justify-content: flex-start; padding-top: 40px; }
+#page-intro { padding: 0 0 60px; }
+.page-result { padding: 0 0 80px; align-items: stretch; }
+
+.card-wrap { width: 100%; max-width: 680px; }
+.result-wrap {
+  width: 100%;
+}
+/* Inner sections under hero use a constrained width */
+.result-wrap > *:not(#result-hero) {
+  max-width: 880px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* ── Tag labels (drawing-style accent) ── */
+.tag-mono {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--bp-cyan);
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--bp-border);
+  border-radius: 2px;
+  background: rgba(48,166,223,0.06);
+}
+.divider-tech {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px;
+  color: var(--bp-text-mute); margin: 18px 0;
+}
+.divider-tech::before, .divider-tech::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--bp-border-strong), transparent);
+}
+
+/* ═══════════════════════════════════════════
+   16personalities-style INTRO
+   ═══════════════════════════════════════════ */
+#page-intro {
+  background: var(--c-bg);
+  width: 100%;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+}
+
+/* Top brand bar */
+.brand-bar {
+  background: var(--c-paper);
+  border-bottom: 1px solid var(--c-divider);
+  padding: 14px 24px;
+}
+.brand-bar-inner {
+  max-width: 1080px; margin: 0 auto;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+}
+.brand-logo {
+  font-family: var(--font-titles);
+  font-weight: 900;
+  font-size: 22px;
+  color: var(--c-heading);
+  letter-spacing: -0.5px;
+}
+.brand-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--c-text-mute);
+  text-transform: uppercase;
+}
+
+/* Blue hero band */
+.hero-16p {
+  background: var(--c-blue);
+  color: #fff;
+  padding: 56px 24px 64px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-16p-inner {
+  max-width: 1080px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 48px;
+  align-items: center;
+}
+.hero-16p-text { z-index: 2; }
+.hero-16p-title {
+  font-family: var(--font-titles);
+  font-size: clamp(36px, 6vw, 56px);
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 20px;
+  color: #fff;
+  letter-spacing: -1.5px;
+}
+.hero-16p-title em {
+  font-style: normal;
+  color: var(--c-yellow);
+  position: relative;
+}
+.hero-16p-title em::after {
+  content: '';
+  position: absolute;
+  bottom: 4px; left: 0; right: 0;
+  height: 8px;
+  background: rgba(228,174,58,.35);
+  z-index: -1;
+}
+.hero-16p-sub {
+  font-family: var(--font-jp);
+  font-size: 16px;
+  line-height: 1.7;
+  margin-bottom: 28px;
+  color: rgba(255,255,255,.92);
+  font-weight: 500;
+}
+.hero-16p-sub strong {
+  color: var(--c-yellow);
+  font-weight: 800;
+}
+.hero-16p-meta {
+  font-family: var(--font-jp);
+  font-size: 13px;
+  margin-top: 14px;
+  color: rgba(255,255,255,.7);
+  letter-spacing: 0.5px;
+}
+.hero-16p-visual {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-width: 480px;
+  margin-left: auto;
+}
+.hero-16p-photo {
+  position: absolute; inset: 0;
+  background: #fff;
+  z-index: 2;
+}
+.hero-16p-photo img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+/* Decorative shapes behind photo */
+.hero-16p-deco-1 {
+  position: absolute;
+  width: 70%; height: 70%;
+  top: -10%; right: -10%;
+  background: var(--c-yellow);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  z-index: 1;
+}
+.hero-16p-deco-2 {
+  position: absolute;
+  width: 50%; height: 50%;
+  bottom: -8%; left: -8%;
+  background: var(--c-coral);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  z-index: 1;
+}
+
+/* Coral CTA button (16p signature) */
+.btn-coral, #btn-start.btn-coral {
+  display: inline-block;
+  background: var(--c-coral);
+  color: #fff;
+  border: none;
+  border-radius: 60px;
+  padding: 16px 36px;
+  font-family: var(--font-titles);
+  font-size: 16px; font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0;
+  box-shadow: 0 4px 14px rgba(242,94,98,.35);
+  transition: transform .2s, box-shadow .2s, background .2s;
+}
+.btn-coral:hover, #btn-start.btn-coral:hover {
+  background: var(--c-coral-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(242,94,98,.5);
+}
+
+/* Strip sections (alternating white/off-white) */
+.types-strip { background: var(--c-paper); padding: 64px 24px; }
+.axes-strip { background: var(--c-bg); padding: 64px 24px; }
+.stats-strip { background: var(--c-blue); padding: 48px 24px; color: #fff; }
+.strip-inner { max-width: 1080px; margin: 0 auto; text-align: center; }
+
+.strip-title {
+  font-family: var(--font-titles);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 900;
+  color: var(--c-heading);
+  margin-bottom: 8px;
+  letter-spacing: -1px;
+}
+.strip-title span { color: var(--c-coral); }
+.stats-strip .strip-title { color: #fff; }
+.strip-sub {
+  font-family: var(--font-jp);
+  font-size: 16px;
+  color: var(--c-text-dim);
+  margin-bottom: 32px;
+}
+
+/* Type emoji row */
+.strip-emojis {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.strip-emojis span {
+  font-size: 40px;
+  aspect-ratio: 1 / 1;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--c-bg);
+  border-radius: var(--radius);
+  transition: transform .25s;
+}
+.strip-emojis span:hover { transform: scale(1.15) rotate(-5deg); }
+
+/* 4 axes cards */
+.axes-cards {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+  margin-top: 24px;
+}
+.axis-card {
+  background: var(--c-paper);
+  border-radius: var(--radius);
+  padding: 28px 20px;
+  text-align: left;
+  box-shadow: var(--shadow);
+  transition: transform .25s, box-shadow .25s;
+  border-top: 4px solid;
+}
+.axis-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.axis-card-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--c-text-mute);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.axis-card h3 {
+  font-family: var(--font-titles);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--c-heading);
+  margin-bottom: 6px;
+}
+.axis-card p {
+  font-family: var(--font-jp);
+  font-size: 14px;
+  color: var(--c-text);
+}
+.axis-card.axis-purple { border-top-color: var(--c-purple); }
+.axis-card.axis-purple .axis-card-num { color: var(--c-purple); }
+.axis-card.axis-blue { border-top-color: var(--c-blue); }
+.axis-card.axis-blue .axis-card-num { color: var(--c-blue); }
+.axis-card.axis-green { border-top-color: var(--c-green); }
+.axis-card.axis-green .axis-card-num { color: var(--c-green); }
+.axis-card.axis-yellow { border-top-color: var(--c-yellow); }
+.axis-card.axis-yellow .axis-card-num { color: var(--c-yellow); }
+
+/* Stats row */
+.stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+}
+.stat {
+  display: flex; flex-direction: column; align-items: center;
+}
+.stat strong {
+  font-family: var(--font-titles);
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--c-yellow);
+  letter-spacing: -2px;
+}
+.stat span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.85);
+  margin-top: 4px;
+}
+
+/* Hide all old intro chrome */
+.cover-masthead, .cover-meta, .cover-rule, .cover-brand-wrap,
+.cover-brand, .cover-stamp, .cover-en, .cover-hero,
+.cover-hero-img, .cover-hero-overlay, .cover-hero-text,
+.cover-feature-label, .cover-feature, .cover-feature-sub,
+.cover-article, .cover-lede, .cover-bullets, .cover-cta-wrap,
+.cover-note, .numero, .btn-magazine { display: none !important; }
+
+/* Mobile responsive */
+@media (max-width: 700px) {
+  .hero-16p-inner { grid-template-columns: 1fr; gap: 32px; }
+  .hero-16p-visual { max-width: 320px; margin: 0 auto; }
+  .axes-cards { grid-template-columns: repeat(2, 1fr); }
+  .strip-emojis { grid-template-columns: repeat(4, 1fr); }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+}
+
+/* Masthead (top of cover) */
+.cover-masthead {
+  padding: 28px 28px 0;
+  max-width: 880px; margin: 0 auto;
+  width: 100%;
+}
+.cover-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+}
+.cover-meta .cover-issue, .cover-meta .cover-date { font-weight: 500; }
+.cover-rule {
+  height: 3px; background: var(--ink);
+  margin: 12px 0 4px;
+}
+.cover-brand-wrap {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px;
+  border-bottom: 3px solid var(--ink);
+  padding-bottom: 6px;
+}
+.cover-brand {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: clamp(56px, 16vw, 128px);
+  line-height: 0.85;
+  letter-spacing: -4px;
+  color: var(--ink);
+}
+.cover-stamp {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-red);
+  letter-spacing: 1px;
+  flex-shrink: 0;
+  padding-bottom: 12px;
+}
+.cover-en {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  margin-top: 10px;
+  text-align: center;
+}
+
+/* Hero image with polygon overlays */
+.cover-hero {
+  position: relative;
+  margin: 28px auto 0;
+  max-width: 880px;
+  width: calc(100% - 56px);
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--ink);
+  border-radius: var(--radius-sm);
+}
+.cover-hero-img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  filter: contrast(1.05) saturate(1.05);
+}
+.cover-hero-overlay {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, rgba(26,24,21,.15) 0%, rgba(26,24,21,.05) 30%, rgba(26,24,21,.55) 75%, rgba(26,24,21,.85) 100%);
+}
+/* Polygon decorations on the hero */
+.poly-tl { top: 0; left: 0; width: 140px; height: 140px; z-index: 2; }
+.poly-br { bottom: 0; right: 0; width: 100px; height: 100px; z-index: 2; }
+.poly-circle-yellow { top: 24px; right: 24px; width: 64px; height: 64px; z-index: 2; }
+
+.cover-hero-text {
+  position: absolute;
+  left: 28px; right: 28px; bottom: 28px;
+  z-index: 3; color: #fff;
+}
+.cover-feature-label {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 4px;
+  background: var(--accent-red); color: #fff;
+  padding: 4px 10px;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.cover-feature {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: clamp(34px, 7vw, 56px);
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+  margin-bottom: 14px;
+  color: #fff;
+  font-family: var(--font-jp-serif), var(--font-display);
+}
+.cover-feature em {
+  color: var(--accent-yellow);
+  font-style: italic;
+}
+.cover-feature-sub {
+  font-family: var(--font-jp);
+  font-size: 14px;
+  line-height: 1.7;
+  color: rgba(255,255,255,.92);
+  font-weight: 500;
+  max-width: 480px;
+}
+
+/* Article-style intro */
+.cover-article {
+  max-width: 720px; margin: 48px auto 0;
+  padding: 0 28px;
+}
+.cover-lede {
+  font-family: var(--font-jp-serif);
+  font-size: clamp(18px, 2.5vw, 22px);
+  line-height: 1.9;
+  color: var(--ink);
+  margin: 24px 0 28px;
+  font-weight: 500;
+}
+.cover-lede em {
+  font-style: italic;
+  color: var(--accent-red);
+  font-weight: 700;
+}
+.cover-lede strong {
+  font-weight: 900;
+  background: linear-gradient(180deg, transparent 60%, var(--accent-yellow) 60%);
+  padding: 0 2px;
+}
+.cover-bullets {
+  list-style: none;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  padding: 14px 0;
+  margin: 32px 0 36px;
+}
+.cover-bullets li {
+  display: flex; align-items: baseline; gap: 16px;
+  padding: 10px 0;
+  font-family: var(--font-jp);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  border-bottom: 1px dotted var(--divider);
+}
+.cover-bullets li:last-child { border-bottom: none; }
+.cover-bullets li span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--accent-red);
+  flex-shrink: 0;
+  width: 56px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.cover-cta-wrap {
+  text-align: center; margin-top: 36px;
+}
+.btn-magazine {
+  background: var(--ink);
+  border: none;
+  border-radius: 0;
+  padding: 18px 36px;
+  font-family: var(--font-sans);
+  font-size: 14px; font-weight: 700;
+  color: var(--accent-yellow); letter-spacing: 3px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 14px;
+  transition: background .25s, transform .2s;
+  text-transform: uppercase;
+}
+.btn-magazine span {
+  font-family: var(--font-display);
+  font-size: 22px; font-style: italic;
+  color: var(--accent-red);
+  font-weight: 900;
+}
+.btn-magazine:hover {
+  background: var(--accent-red); color: #fff;
+  transform: translateY(-2px);
+}
+.btn-magazine:hover span { color: var(--accent-yellow); }
+.cover-note {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--ink-mute);
+  margin-top: 16px;
+  text-transform: uppercase;
+}
+
+/* Legacy intro elements — hide (replaced by magazine layout) */
+#intro-inner, #intro-symbol, #intro-badge, #intro-title, #intro-sub, #intro-desc, #intro-note { display: none; }
+#intro-badge {
+  font-family: var(--font-display);
+  font-size: 11px; letter-spacing: 4px;
+  color: var(--primary);
+  text-transform: uppercase; margin-bottom: 16px;
+  display: inline-block;
+  padding: 7px 18px;
+  background: var(--primary-soft);
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+}
+#intro-title {
+  font-family: var(--font-display);
+  font-size: clamp(44px, 8vw, 72px);
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -2px;
+  line-height: 1.05;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-pink) 60%, var(--accent-yellow) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+#intro-sub {
+  font-family: var(--font-jp);
+  font-size: 15px; color: var(--ink-dim);
+  letter-spacing: 1px;
+  margin-bottom: 40px;
+  font-weight: 600;
+}
+#intro-desc {
+  font-family: var(--font-jp);
+  font-size: 15px; color: var(--ink); line-height: 2;
+  margin-bottom: 40px;
+  text-align: left; padding: 32px 32px;
+  border: none;
+  background: var(--paper);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  position: relative;
+}
+#intro-desc::before { display: none; }
+#intro-desc strong {
+  color: var(--primary); font-weight: 800;
+  background: var(--primary-soft);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+/* #btn-start handled by .btn-magazine (id has higher specificity, so reset) */
+#btn-start.btn-magazine {
+  background: var(--ink);
+  border: none;
+  border-radius: 0;
+  padding: 18px 36px;
+  font-family: var(--font-sans);
+  font-size: 14px; font-weight: 700;
+  color: var(--accent-yellow);
+  letter-spacing: 3px;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background .25s, transform .2s;
+}
+#btn-start.btn-magazine::after { content: ''; }
+#btn-start.btn-magazine:hover {
+  background: var(--accent-red);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: none;
+}
+#intro-note {
+  font-family: var(--font-jp);
+  font-size: 13px; color: var(--ink-mute);
+  margin-top: 24px;
+}
+
+/* ── Quiz ── */
+#quiz-header { width: 100%; max-width: 620px; margin-bottom: 28px; }
+#quiz-nav {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
+  font-family: var(--font-mono);
+}
+#btn-back {
+  background: var(--paper); border: 1px solid var(--divider);
+  font-size: 13px; letter-spacing: 0.5px;
+  padding: 8px 18px; border-radius: var(--radius-pill);
+  cursor: pointer; font-family: var(--font-display);
+  color: var(--ink-dim); font-weight: 600;
+  transition: color .2s, border-color .2s, background .2s, transform .15s;
+  box-shadow: var(--shadow-sm);
+}
+#btn-back:hover:not(:disabled) {
+  color: var(--primary);
+  border-color: var(--primary);
+  transform: translateX(-2px);
+}
+#btn-back:disabled { color: var(--ink-mute); opacity: .35; cursor: default; }
+#quiz-counter {
+  font-family: var(--font-display);
+  font-size: 14px; color: var(--primary);
+  letter-spacing: 1px; font-weight: 700;
+}
+#progress-track {
+  position: relative;
+  height: 8px; background: var(--divider); overflow: visible;
+  border-radius: var(--radius-pill);
+}
+#progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--accent-pink) 100%);
+  transition: width .5s cubic-bezier(.4,.0,.2,1);
+  box-shadow: 0 0 12px rgba(106,90,249,.4);
+  width: 0%;
+  position: relative;
+  border-radius: var(--radius-pill);
+}
+#progress-fill::after { display: none; }
+#progress-track::before, #progress-track::after { display: none; }
+
+#question-card { animation: fadeSlideIn .4s ease forwards; }
+#question-card.slide-out { animation: fadeSlideOut .25s ease forwards; }
+
+.q-outer {
+  padding: 36px 32px 32px;
+  margin-bottom: 20px;
+  position: relative;
+  border-radius: var(--radius-lg);
+  border: none;
+}
+#q-axis-label {
+  font-family: var(--font-display);
+  font-size: 12px; color: var(--primary);
+  letter-spacing: 2px;
+  margin-bottom: 8px; text-transform: uppercase;
+  font-weight: 700;
+}
+#q-number {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+  margin-bottom: 28px;
+  font-weight: 800;
+  border-bottom: 2px dashed var(--divider);
+  padding-bottom: 18px;
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+#q-number .q-of {
+  font-size: 14px; color: var(--ink-mute); letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.ab-pair { display: flex; flex-direction: column; gap: 16px; margin-bottom: 4px; }
+.ab-card {
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  display: flex; align-items: flex-start; gap: 16px;
+  background: linear-gradient(135deg, rgba(106,90,249,.06), rgba(255,143,177,.06));
+  border: 2px solid transparent;
+  position: relative;
+}
+.ab-card::before { display: none; }
+.ab-card.b-card { background: linear-gradient(135deg, rgba(255,200,87,.10), rgba(255,107,120,.08)); }
+.ab-badge {
+  width: 36px; height: 36px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 800;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(106,90,249,.35);
+  border: none;
+}
+.b-card .ab-badge {
+  background: var(--accent-yellow);
+  color: #5a3d00;
+  box-shadow: 0 4px 12px rgba(255,200,87,.5);
+}
+.ab-text {
+  font-family: var(--font-jp);
+  font-size: 15px; color: var(--ink); line-height: 1.8;
+  font-weight: 500;
+}
+.ab-divider {
+  text-align: center; color: var(--ink-mute); font-size: 11px;
+  letter-spacing: 4px; font-family: var(--font-display); font-weight: 700;
+}
+
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
+.opt-btn {
+  padding: 18px 14px;
+  border-radius: var(--radius);
+  text-align: center;
+  font-size: 14px; letter-spacing: 0; cursor: pointer;
+  transition: transform .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+  font-family: var(--font-jp);
+  background: var(--paper);
+  border: 2px solid var(--divider);
+  color: var(--ink); font-weight: 600;
+  line-height: 1.4;
+  position: relative;
+  box-shadow: var(--shadow-sm);
+}
+.opt-btn::before { display: none; }
+.opt-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  border-color: var(--primary);
+  box-shadow: 0 8px 24px rgba(106,90,249,.18);
+}
+.opt-btn.selected-a1 {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff; font-weight: 700;
+  box-shadow: 0 8px 24px rgba(106,90,249,.45);
+  transform: scale(1.02);
+  animation: selectPop .35s ease;
+}
+.opt-btn.selected-a2 {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary); font-weight: 700;
+  animation: selectPop .35s ease;
+}
+.opt-btn.selected-b2 {
+  background: #fff4d6;
+  border-color: var(--accent-yellow);
+  color: #8a5a00; font-weight: 700;
+  animation: selectPop .35s ease;
+}
+.opt-btn.selected-b1 {
+  background: var(--accent-yellow);
+  border-color: var(--accent-yellow);
+  color: #5a3d00; font-weight: 700;
+  box-shadow: 0 8px 24px rgba(255,200,87,.50);
+  transform: scale(1.02);
+  animation: selectPop .35s ease;
+}
+.opt-btn:disabled { cursor: not-allowed; }
+
+#quiz-hint {
+  text-align: center;
+  font-family: var(--font-jp);
+  font-size: 12px; color: var(--ink-mute);
+  letter-spacing: 0; margin-top: 12px;
+}
+
+/* ── Result ── */
+#result-page { opacity: 1; }
+#result-page.visible { opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════════
+   PUZZLE & DRAGONS-STYLE RESULT HERO
+   ═══════════════════════════════════════════════════════════ */
+#result-hero.puz-hero {
+  margin: 0 0 40px;
+  padding: 60px 20px 80px;
+  background:
+    radial-gradient(ellipse 80% 60% at center 35%, var(--type-color) 0%, transparent 65%),
+    radial-gradient(ellipse 100% 80% at center 100%, rgba(255,255,255,0.04) 0%, transparent 60%),
+    linear-gradient(180deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a1a 100%);
+  position: relative;
+  border-radius: 0;
+  overflow: hidden;
+  min-height: 720px;
+}
+
+/* Sparkle particle layer */
+.puz-sparkles {
+  position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background-image:
+    radial-gradient(2px 2px at 12% 18%, rgba(255,255,255,.9) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 78% 25%, rgba(255,235,150,.95) 0%, transparent 100%),
+    radial-gradient(2.5px 2.5px at 38% 60%, rgba(180,220,255,.9) 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 70%, rgba(255,200,255,.85) 0%, transparent 100%),
+    radial-gradient(2px 2px at 18% 82%, rgba(255,255,255,.8) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 62% 12%, rgba(200,240,255,.9) 0%, transparent 100%),
+    radial-gradient(1px 1px at 8% 50%, rgba(255,210,240,.7) 0%, transparent 100%),
+    radial-gradient(2px 2px at 92% 45%, rgba(255,255,200,.85) 0%, transparent 100%),
+    radial-gradient(1px 1px at 48% 88%, rgba(180,255,220,.7) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 72% 92%, rgba(255,255,255,.8) 0%, transparent 100%);
+  background-size: 100% 100%;
+  animation: sparkleTwinkle 3.6s ease-in-out infinite;
+}
+@keyframes sparkleTwinkle {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+
+/* Beam light radial */
+.puz-beams {
+  position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%);
+  width: 800px; height: 800px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255,255,255,0.04) 10deg,
+    transparent 20deg,
+    transparent 60deg,
+    rgba(255,255,255,0.03) 70deg,
+    transparent 80deg,
+    transparent 140deg,
+    rgba(255,255,255,0.04) 150deg,
+    transparent 160deg,
+    transparent 220deg,
+    rgba(255,255,255,0.03) 230deg,
+    transparent 240deg,
+    transparent 300deg,
+    rgba(255,255,255,0.04) 310deg,
+    transparent 320deg
+  );
+  border-radius: 50%;
+  z-index: 1;
+  animation: beamSpin 30s linear infinite;
+  pointer-events: none;
+}
+@keyframes beamSpin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* ─── PUZ CARD ─── */
+.puz-card {
+  position: relative; z-index: 2;
+  max-width: 420px; margin: 0 auto;
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,0.10) 0%,
+      rgba(255,255,255,0.06) 100%
+    );
+  border-radius: 28px;
+  padding: 20px 20px 26px;
+  box-shadow:
+    0 0 0 2px var(--type-color),
+    0 0 0 6px rgba(255,255,255,0.15),
+    0 0 60px var(--type-color),
+    0 0 120px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.puz-card::before {
+  content: '';
+  position: absolute; inset: 4px;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,0.18);
+  pointer-events: none;
+}
+
+/* Card top: code gem + rarity stars */
+.puz-card-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 0 6px;
+}
+.puz-element-gem {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-titles);
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: #fff;
+  padding: 6px 16px;
+  background: linear-gradient(135deg, var(--type-color), var(--type-color-deep));
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    inset 0 -2px 0 rgba(0,0,0,0.2),
+    0 4px 12px rgba(0,0,0,0.4);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+.puz-rarity {
+  display: inline-flex; gap: 2px;
+}
+.puz-rarity span {
+  font-size: 18px;
+  color: #ffd84d;
+  text-shadow:
+    0 0 8px rgba(255,200,0,0.9),
+    0 0 16px rgba(255,150,0,0.6),
+    0 1px 2px rgba(0,0,0,0.6);
+  animation: starShine 2.5s ease-in-out infinite;
+}
+.puz-rarity span:nth-child(2) { animation-delay: 0.1s; }
+.puz-rarity span:nth-child(3) { animation-delay: 0.2s; }
+.puz-rarity span:nth-child(4) { animation-delay: 0.3s; }
+.puz-rarity span:nth-child(5) { animation-delay: 0.4s; }
+@keyframes starShine {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50%      { transform: scale(1.15); filter: brightness(1.4); }
+}
+
+/* CHARACTER (big emoji centerpiece) */
+.puz-character {
+  position: relative;
+  aspect-ratio: 1;
+  margin: 0 6px 18px;
+  background:
+    radial-gradient(circle at center,
+      var(--type-color-soft) 0%,
+      var(--type-color) 35%,
+      var(--type-color-deep) 75%,
+      rgba(0,0,0,0.4) 100%);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 40px rgba(0,0,0,0.4),
+    inset 0 0 0 2px rgba(255,255,255,0.18);
+}
+.puz-character-glow {
+  position: absolute; inset: -20%; pointer-events: none;
+  background: radial-gradient(circle, var(--type-color) 0%, transparent 55%);
+  filter: blur(40px);
+  opacity: 0.85;
+  animation: glowPulse 2.8s ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.65; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.1); }
+}
+.puz-character-aura {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(circle at center,
+      transparent 30%,
+      rgba(255,255,255,0.18) 50%,
+      transparent 70%);
+  mix-blend-mode: overlay;
+  animation: auraSpin 8s linear infinite;
+}
+@keyframes auraSpin {
+  to { transform: rotate(360deg); }
+}
+.puz-character-inner {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2;
+}
+.puz-character-inner img {
+  width: 75%; height: 75%; object-fit: contain;
+  filter:
+    drop-shadow(0 8px 16px rgba(0,0,0,0.5))
+    drop-shadow(0 0 30px rgba(255,255,255,0.4));
+  animation: floatY 3.6s ease-in-out infinite;
+}
+.puz-character-inner #result-emoji-fallback {
+  font-size: clamp(120px, 30vw, 180px);
+  line-height: 1;
+  filter:
+    drop-shadow(0 12px 24px rgba(0,0,0,0.5))
+    drop-shadow(0 0 40px rgba(255,255,255,0.4));
+  animation: floatY 3.6s ease-in-out infinite;
+}
+
+/* Orbiting orbs around the character */
+.puz-orb {
+  position: absolute; width: 10px; height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, var(--type-color-soft) 60%, transparent 100%);
+  box-shadow: 0 0 12px var(--type-color-soft), 0 0 24px #fff;
+  z-index: 3;
+  animation: orbOrbit 6s linear infinite;
+}
+.puz-orb-1 { top: 4%; left: 50%; }
+.puz-orb-2 { top: 50%; right: 4%; animation-delay: -1.5s; animation-duration: 7s; }
+.puz-orb-3 { bottom: 4%; left: 50%; animation-delay: -3s; animation-duration: 8s; }
+.puz-orb-4 { top: 50%; left: 4%; animation-delay: -4.5s; animation-duration: 6.5s; }
+@keyframes orbOrbit {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  50%  { transform: translate(10px, -8px) scale(1.4); opacity: 0.7; }
+  100% { transform: translate(0, 0) scale(1); opacity: 1; }
+}
+
+/* Name strip */
+.puz-name-strip {
+  text-align: center;
+  margin: 0 6px 14px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.3));
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.puz-en {
+  font-family: var(--font-titles);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 5px;
+  color: #ffd84d;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px rgba(255,216,77,0.5);
+  margin-bottom: 4px;
+}
+.puz-name {
+  font-family: var(--font-jp);
+  font-size: clamp(24px, 5vw, 32px);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 1px;
+  line-height: 1.15;
+  text-shadow:
+    0 0 12px var(--type-color),
+    0 0 24px var(--type-color),
+    0 2px 4px rgba(0,0,0,0.6);
+}
+
+/* Tagline catchphrase */
+.puz-tagline {
+  font-family: var(--font-jp);
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.92);
+  text-align: center;
+  margin: 0 12px 18px;
+  font-weight: 500;
+  font-style: italic;
+}
+
+/* STATUS bars (4 axes shown as RPG stats) */
+.puz-stats {
+  margin: 0 6px 14px;
+  padding: 14px 14px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25));
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.puz-stat-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 56px;
+  align-items: center; gap: 10px;
+  margin-bottom: 8px;
+  font-family: var(--font-titles);
+}
+.puz-stat-row:last-child { margin-bottom: 0; }
+.puz-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #ffd84d;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  text-transform: uppercase;
+}
+.puz-stat-track {
+  height: 12px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.4);
+}
+.puz-stat-fill {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  background: linear-gradient(90deg, var(--type-color), #ffd84d);
+  box-shadow:
+    0 0 8px var(--type-color),
+    inset 0 1px 0 rgba(255,255,255,0.4);
+  border-radius: 6px;
+  transition: width 1s cubic-bezier(.2,.8,.2,1);
+}
+.puz-stat-val {
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  text-align: right;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 8px var(--type-color);
+}
+
+/* Type/element pills */
+.puz-type-pills {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  margin: 0 6px;
+}
+.puz-type-pill {
+  font-family: var(--font-titles);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #fff;
+  padding: 5px 12px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 999px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+.hero-16p--result {
+  padding: 56px 24px 64px;
+}
+.result-hero-inner { z-index: 2; position: relative; }
+.result-hero-text { text-align: left; }
+.result-code-tag {
+  display: inline-block;
+  background: rgba(0,0,0,0.18);
+  border-radius: 60px;
+  padding: 6px 18px;
+  margin-bottom: 16px;
+  font-family: var(--font-mono);
+  font-size: 14px; font-weight: 700;
+  color: var(--c-yellow);
+  letter-spacing: 5px;
+}
+.result-hero-name {
+  font-family: var(--font-titles);
+  font-size: clamp(36px, 6vw, 56px);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.result-hero-en {
+  font-family: var(--font-titles);
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: var(--c-yellow);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+.result-hero-tagline {
+  font-family: var(--font-jp);
+  font-size: 17px;
+  color: rgba(255,255,255,.95);
+  line-height: 1.75;
+  font-weight: 500;
+  border-left: 3px solid var(--c-yellow);
+  padding-left: 16px;
+}
+
+.result-hero-visual {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 420px;
+  min-height: 280px;
+  margin-left: auto;
+}
+.result-character-poly {
+  position: absolute; inset: 0;
+  background: #fff;
+  z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,.18);
+}
+.result-character-poly #result-character-wrap {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+/* HUGE character display — friendly, no frame */
+#result-elevation {
+  position: relative;
+  width: 280px; height: 280px;
+  margin: 0 auto 24px;
+}
+#result-character-wrap {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  z-index: 2;
+}
+/* CSS rotating decorative rings around the character (fallback + decoration) */
+#result-elevation .deco-ring {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 1;
+}
+#result-elevation .deco-ring svg { width: 100%; height: 100%; }
+#result-elevation .deco-ring.r1 { animation: spinSlow 24s linear infinite; }
+#result-elevation .deco-ring.r2 { animation: spinReverse 38s linear infinite; }
+#result-character-wrap {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  z-index: 4;
+  width: 100%; height: 100%;
+}
+#result-character-wrap img {
+  width: 70%; height: 70%; object-fit: contain;
+  animation: floatY 4s ease-in-out infinite;
+}
+#result-emoji-fallback {
+  font-size: clamp(120px, 18vw, 180px); line-height: 1;
+  animation: floatY 4s ease-in-out infinite;
+}
+/* Hide dimension lines (blueprint vestige) */
+#result-elevation::before, #result-elevation::after { display: none; }
+.dim-tick, .dim-label { display: none; }
+/* Decorative rings — keep as soft floating circles */
+#result-elevation .deco-ring { opacity: 0.4; }
+
+#result-code-badge {
+  display: inline-flex; align-items: center; gap: 12px;
+  background: var(--type-color);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 10px 26px;
+  margin-bottom: 18px;
+  font-family: var(--font-display);
+  box-shadow: 0 8px 24px var(--type-color-soft);
+}
+#result-code-badge::before, #result-code-badge::after { display: none; }
+#result-code-badge span {
+  font-size: 22px; font-weight: 800;
+  color: #fff;
+  letter-spacing: 6px;
+  font-family: var(--font-display);
+}
+#result-name {
+  font-family: var(--font-jp-serif), var(--font-display);
+  font-size: clamp(40px, 9vw, 64px);
+  font-weight: 900;
+  color: var(--ink);
+  margin-bottom: 6px;
+  letter-spacing: -2px;
+  line-height: 1.0;
+  font-style: italic;
+}
+#result-en {
+  font-family: var(--font-display);
+  font-size: 14px; color: var(--accent-red);
+  letter-spacing: 4px; margin-bottom: 20px;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-style: italic;
+}
+#result-tagline {
+  font-family: var(--font-jp-serif);
+  font-size: 18px; color: var(--ink); font-weight: 500;
+  line-height: 1.8;
+  background: var(--bg-soft);
+  border: none;
+  border-left: 4px solid var(--accent-red);
+  border-radius: 0;
+  padding: 18px 20px;
+  text-align: left;
+}
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+
+/* A-worker CTA (sticky bottom on result) */
+#aworker-cta-sticky {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  padding: 12px 16px 20px;
+  background: linear-gradient(to top, rgba(255,255,255,.96) 60%, transparent);
+  display: none;
+}
+.cta-aworker-btn {
+  display: block; width: 100%; max-width: 620px; margin: 0 auto;
+  background: var(--bp-accent-deep);
+  border: none;
+  border-radius: 50px;
+  padding: 18px 24px; font-size: 14px; font-weight: 800;
+  color: #fff; letter-spacing: 2px; cursor: pointer;
+  text-decoration: none; text-align: center;
+  font-family: var(--font-sans);
+  box-shadow: 0 6px 24px rgba(227,73,88,.35);
+  transition: transform .25s, box-shadow .25s, background .2s;
+}
+.cta-aworker-btn:hover {
+  background: var(--bp-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(227,73,88,.55);
+}
+
+/* Inline CTA — friendly pop card */
+.cta-inline {
+  margin: 28px 0;
+  animation: reveal .6s .5s ease both;
+  position: relative;
+  padding: 36px 28px;
+  border: none;
+  background: linear-gradient(135deg, #fff5f6 0%, #ffe5e8 100%);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  text-align: center;
+  overflow: hidden;
+}
+.cta-inline::before {
+  content: '⚡ NEXT STEP';
+  position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-display); font-size: 11px;
+  letter-spacing: 2px; padding: 4px 14px;
+  background: var(--paper);
+  color: var(--accent-red-deep);
+  font-weight: 800;
+  border-radius: var(--radius-pill);
+}
+.cta-inline .cta-pre {
+  font-family: var(--font-jp);
+  font-size: 16px;
+  color: var(--ink);
+  margin: 28px 0 24px;
+  line-height: 1.6;
+  font-weight: 700;
+}
+.cta-inline a {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--accent-red-deep) 0%, var(--accent-red) 100%);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 18px 42px;
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 800; color: #fff;
+  letter-spacing: 0.5px; text-decoration: none;
+  box-shadow: 0 8px 24px rgba(227,73,88,.4), inset 0 -2px 0 rgba(0,0,0,.1);
+  transition: transform .25s, box-shadow .25s;
+}
+.cta-inline a:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 14px 36px rgba(227,73,88,.55), inset 0 -2px 0 rgba(0,0,0,.1);
+}
+
+/* Result sections — friendly rounded cards */
+.result-section {
+  margin-bottom: 16px; animation: reveal .6s ease both;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.result-section summary {
+  list-style: none; cursor: pointer;
+  padding: 20px 24px;
+  display: flex; justify-content: space-between; align-items: center;
+  border-radius: var(--radius);
+  user-select: none;
+  position: relative;
+  border-left: none;
+  transition: background .2s;
+}
+.result-section summary:hover { background: var(--bg-soft); }
+.result-section details[open] summary {
+  border-bottom: 1px solid var(--divider);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.result-section summary::-webkit-details-marker { display: none; }
+.section-label {
+  font-family: var(--font-display);
+  font-size: 14px; letter-spacing: 1px;
+  color: var(--ink);
+  font-weight: 800; text-transform: uppercase;
+  display: flex; align-items: center; gap: 12px;
+}
+.section-label .sec-num {
+  font-size: 11px; color: var(--primary);
+  padding: 4px 10px; border: none;
+  background: var(--primary-soft);
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+}
+.section-chevron {
+  font-family: var(--font-display);
+  font-size: 14px; color: var(--ink-mute);
+  transition: transform .25s ease;
+  letter-spacing: 0;
+}
+.result-section details[open] .section-chevron { transform: rotate(180deg); }
+.section-body { padding: 24px; }
+.result-text {
+  font-family: var(--font-jp);
+  font-size: 15px; color: var(--ink); line-height: 2;
+  font-weight: 500;
+}
+
+/* Type Balance — friendly rounded scale bars */
+.axis-block { margin-bottom: 24px; }
+.axis-block:last-child { margin-bottom: 4px; }
+.axis-meta {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 10px;
+  font-family: var(--font-jp);
+}
+.axis-left-label {
+  font-size: 13px; color: var(--type-color-deep);
+  font-weight: 700;
+}
+.axis-right-label {
+  font-size: 13px; color: var(--ink-dim);
+  font-weight: 600;
+}
+.axis-score-val {
+  font-family: var(--font-display);
+  font-size: 11px; color: var(--ink-mute);
+  font-weight: 600;
+}
+.axis-score-val strong {
+  color: var(--type-color-deep); font-weight: 800;
+}
+.axis-meter {
+  position: relative;
+  height: 14px;
+  background: var(--bg-soft);
+  border: none;
+  border-radius: var(--radius-pill);
+  overflow: visible;
+}
+.axis-meter::before, .axis-meter::after { display: none; }
+.axis-fill {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  background: linear-gradient(90deg, var(--type-color), var(--type-color-deep));
+  border-right: none;
+  box-shadow: 0 2px 8px var(--type-color-soft);
+  border-radius: var(--radius-pill);
+}
+.axis-meter .axis-mid { display: none; }
+.axis-threshold {
+  position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: var(--accent-red-deep);
+  left: 46.67%;
+  z-index: 2;
+  border-radius: 2px;
+}
+.axis-threshold::before {
+  content: '12|13'; position: absolute;
+  top: -18px; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-display); font-size: 9px;
+  color: var(--accent-red-deep); letter-spacing: 0;
+  background: var(--paper); padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+.axis-scale {
+  display: flex; justify-content: space-between;
+  margin-top: 6px;
+  font-family: var(--font-display); font-size: 10px;
+  color: var(--ink-mute); font-weight: 600;
+}
+
+/* SW grid */
+.sw-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  margin-bottom: 16px; animation: reveal .6s .1s ease both;
+}
+.sw-card {
+  padding: 24px 22px;
+  border-radius: var(--radius);
+  background: var(--paper);
+  border: none;
+  box-shadow: var(--shadow);
+  position: relative;
+}
+.sw-card.strength-card {
+  background: linear-gradient(135deg, rgba(74,222,128,.10), rgba(74,222,128,.02));
+  border: 1px solid rgba(74,222,128,.20);
+}
+.sw-card.weakness-card {
+  background: linear-gradient(135deg, rgba(255,200,87,.12), rgba(255,200,87,.02));
+  border: 1px solid rgba(255,200,87,.22);
+}
+
+.sw-label {
+  font-family: var(--font-display);
+  font-size: 12px; letter-spacing: 2px;
+  margin-bottom: 18px; font-weight: 800;
+  text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.sw-label.s { color: #2eaa55; }
+.sw-label.w { color: #b46f00; }
+
+.sw-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0,0,0,.05);
+}
+.sw-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.sw-dot {
+  font-family: var(--font-display);
+  font-size: 14px;
+  margin-top: 0; flex-shrink: 0;
+  line-height: 1.5;
+}
+.strength-card .sw-dot { color: #4ade80; }
+.weakness-card .sw-dot { color: var(--accent-yellow); }
+.sw-item-text {
+  font-family: var(--font-jp);
+  font-size: 14px; line-height: 1.7;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* Detail list — friendly cards */
+.detail-list { display: grid; gap: 10px; }
+.detail-item {
+  background: var(--bg-soft);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  color: var(--ink); line-height: 1.7; font-size: 14px;
+  font-family: var(--font-jp);
+  font-weight: 500;
+}
+.detail-item::before {
+  content: "✦"; margin-right: 10px;
+  color: var(--type-color); font-family: var(--font-display);
+  font-size: 14px;
+}
+
+/* Anecdotes — emoji bullets */
+.anecdote-item {
+  font-family: var(--font-jp);
+  font-size: 14px; color: var(--ink); line-height: 1.75;
+  padding: 14px 0 14px 32px;
+  border-bottom: 1px solid var(--divider);
+  position: relative;
+  font-weight: 500;
+}
+.anecdote-item:last-child { border-bottom: none; }
+.anecdote-item::before {
+  content: '💭';
+  position: absolute; left: 0; top: 12px;
+  font-size: 16px;
+}
+
+/* Career tags — pill chips */
+.career-tags { display: flex; flex-wrap: wrap; gap: 10px; }
+.career-tag {
+  background: var(--type-color);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 10px 18px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0;
+  box-shadow: 0 4px 12px var(--type-color-soft);
+}
+
+/* Compat — gradient cards */
+.compat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.compat-item {
+  background: var(--bg-soft);
+  border: none;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  font-family: var(--font-jp);
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.7;
+  font-weight: 500;
+}
+.compat-item strong {
+  display: block; margin-bottom: 10px;
+  color: var(--type-color-deep);
+  font-size: 14px;
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+/* Share — friendly chip row */
+.share-section {
+  display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
+  margin: 28px 0 16px;
+  padding: 24px;
+  border: none;
+  background: var(--paper);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  position: relative;
+}
+.share-section::before {
+  content: '📤 SHARE';
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-display); font-size: 11px;
+  letter-spacing: 2px; padding: 4px 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 800;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+}
+.share-btn {
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 12px 22px;
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 700;
+  color: var(--ink); cursor: pointer;
+  letter-spacing: 0;
+  background: var(--bg-soft);
+  transition: transform .2s ease, box-shadow .2s ease;
+  box-shadow: var(--shadow-sm);
+}
+.share-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.share-btn.x    { background: #0b1118; color: #fff; }
+.share-btn.x:hover    { background: #28374a; }
+.share-btn.line { background: #06C755; color: #fff; }
+.share-btn.line:hover { background: #05a948; }
+.share-btn.save { background: var(--primary); color: #fff; }
+.share-btn.save:hover { background: #5847e0; }
+#share-status {
+  width: 100%; text-align: center; font-family: var(--font-jp); font-size: 13px;
+  color: var(--ink-dim); min-height: 1.4em;
+}
+
+/* Restart — friendly text button */
+#btn-restart {
+  width: 100%;
+  background: transparent;
+  border: 2px dashed var(--divider);
+  border-radius: var(--radius-pill);
+  padding: 16px; font-family: var(--font-display);
+  font-size: 14px; font-weight: 700;
+  color: var(--ink-dim); cursor: pointer; letter-spacing: 0;
+  transition: background .3s ease, color .2s, border-color .2s;
+  margin-bottom: 60px;
+}
+#btn-restart:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Share canvas (offscreen) */
+.share-card-canvas {
+  position: fixed; left: -99999px; top: 0;
+  width: 1080px; height: 1350px; pointer-events: none;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .sw-grid { grid-template-columns: 1fr; }
+  .compat-grid { grid-template-columns: 1fr; }
+  .opts { grid-template-columns: 1fr 1fr; }
+  .q-outer { padding: 24px 18px; }
+  #result-elevation { width: 200px; height: 200px; }
+  #result-character-wrap { inset: 20px; }
+  #result-emoji-fallback { font-size: 88px; }
+  #title-block { right: 36px; font-size: 8px; }
+  #sheet-stamp { left: 36px; font-size: 8px; }
+  .corner-bracket { width: 20px; height: 20px; }
+  .corner-bracket.tl, .corner-bracket.tr { top: 12px; }
+  .corner-bracket.bl, .corner-bracket.br { bottom: 12px; }
+  .corner-bracket.tl, .corner-bracket.bl { left: 12px; }
+  .corner-bracket.tr, .corner-bracket.br { right: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Blueprint background layers -->
+<div id="grid-bg" aria-hidden="true"></div>
+<div id="grid-vignette" aria-hidden="true"></div>
+<div id="deco-layer" aria-hidden="true"></div>
+
+<!-- Drawing sheet frame: corner brackets -->
+<div class="corner-bracket tl" aria-hidden="true"></div>
+<div class="corner-bracket tr" aria-hidden="true"></div>
+<div class="corner-bracket bl" aria-hidden="true"></div>
+<div class="corner-bracket br" aria-hidden="true"></div>
+
+<!-- Drawing title block (top-right) -->
+<div id="title-block" aria-hidden="true">
+  <div class="tb-row"><span class="tb-k">PROJECT</span><span class="tb-v">ARCHIme</span></div>
+  <div class="tb-row"><span class="tb-k">DRAWING</span><span class="tb-v">TYPE DIAGNOSTIC</span></div>
+  <div class="tb-row"><span class="tb-k">SCALE</span><span class="tb-v">N.T.S.</span></div>
+  <div class="tb-row"><span class="tb-k">SHEET</span><span class="tb-v" id="tb-sheet">01 / 01</span></div>
+</div>
+
+<!-- Bottom-left sheet stamp -->
+<div id="sheet-stamp" aria-hidden="true">DWG.NO. ARC-001 / REV.A / 4-AXIS × 5-QUESTION</div>
+
+<!-- Scroll progress (right edge) -->
+<div id="scroll-progress-track" aria-hidden="true"><div id="scroll-progress"></div></div>
+
+<div id="app">
+
+  <!-- INTRO — 16personalities style -->
+  <div id="page-intro" class="page">
+
+    <!-- Top brand bar -->
+    <div class="brand-bar">
+      <div class="brand-bar-inner">
+        <span class="brand-logo">ARCHIme</span>
+        <span class="brand-tag">建築タイプ診断 / TYPE DIAGNOSTIC</span>
+      </div>
+    </div>
+
+    <!-- Blue hero band -->
+    <section class="hero-16p">
+      <div class="hero-16p-inner">
+        <div class="hero-16p-text">
+          <h1 class="hero-16p-title">あなたは<br>どんな<em>建築家</em>？</h1>
+          <p class="hero-16p-sub">
+            たった <strong>5分</strong> で、4つの設計軸から<br>
+            あなたの「建築家プロファイル」を診断します。
+          </p>
+          <button id="btn-start" class="btn-coral">無料で診断をはじめる</button>
+          <p class="hero-16p-meta">所要 約5分 ・ 全 20問 ・ メールアドレス不要</p>
+        </div>
+        <div class="hero-16p-visual">
+          <div class="hero-16p-photo poly-clip-1">
+            <img src="https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=600&q=85"
+                 alt="Architecture" loading="eager">
+          </div>
+          <div class="hero-16p-deco-1"></div>
+          <div class="hero-16p-deco-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 16 types preview band -->
+    <section class="types-strip">
+      <div class="strip-inner">
+        <h2 class="strip-title">16<span>タイプ</span>の建築家</h2>
+        <p class="strip-sub">あなたはどの動物に近い？</p>
+        <div class="strip-emojis">
+          <span>🐬</span><span>🐋</span><span>🐙</span><span>🐧</span>
+          <span>🦈</span><span>🐢</span><span>🦉</span><span>🐝</span>
+          <span>🐎</span><span>🦒</span><span>🐘</span><span>🦏</span>
+          <span>🦊</span><span>🐺</span><span>🦅</span><span>🐳</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 axes feature -->
+    <section class="axes-strip">
+      <div class="strip-inner">
+        <h2 class="strip-title">4つの<span>設計軸</span></h2>
+        <div class="axes-cards">
+          <div class="axis-card axis-purple">
+            <div class="axis-card-num">01</div>
+            <h3>世界観</h3>
+            <p>構想型 — 現実型</p>
+          </div>
+          <div class="axis-card axis-blue">
+            <div class="axis-card-num">02</div>
+            <h3>価値志向</h3>
+            <p>造形 — 機能</p>
+          </div>
+          <div class="axis-card axis-green">
+            <div class="axis-card-num">03</div>
+            <h3>働き方</h3>
+            <p>組織 — 個人</p>
+          </div>
+          <div class="axis-card axis-yellow">
+            <div class="axis-card-num">04</div>
+            <h3>プロセス</h3>
+            <p>探索 — 計画</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats strip -->
+    <section class="stats-strip">
+      <div class="strip-inner">
+        <div class="stats-row">
+          <div class="stat"><strong>5</strong><span>min</span></div>
+          <div class="stat"><strong>20</strong><span>questions</span></div>
+          <div class="stat"><strong>16</strong><span>types</span></div>
+          <div class="stat"><strong>4</strong><span>axes</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="page-quiz" class="page quiz-page" style="display:none">
+    <div id="quiz-header">
+      <div id="quiz-nav">
+        <button id="btn-back" disabled>◄ BACK</button>
+        <span id="quiz-counter">Q.01 / 20</span>
+        <div style="width:80px"></div>
+      </div>
+      <div id="progress-track"><div id="progress-fill"></div></div>
+    </div>
+
+    <div class="card-wrap">
+      <div id="question-card">
+        <div class="glass q-outer">
+          <div id="q-axis-label"></div>
+          <div id="q-number"><span id="q-num-text">Q.01</span><span class="q-of" id="q-num-of">/ 20</span></div>
+          <div class="ab-pair">
+            <div class="ab-card a-card">
+              <div class="ab-badge">A</div>
+              <p class="ab-text" id="q-text-a"></p>
+            </div>
+            <div class="ab-divider">─ OR ─</div>
+            <div class="ab-card b-card">
+              <div class="ab-badge">B</div>
+              <p class="ab-text" id="q-text-b"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="opts" role="group" aria-label="回答を選んでください">
+          <button class="opt-btn" id="opt0" onclick="selectOpt(0)">Aに共感</button>
+          <button class="opt-btn" id="opt1" onclick="selectOpt(1)">ややA</button>
+          <button class="opt-btn" id="opt2" onclick="selectOpt(2)">ややB</button>
+          <button class="opt-btn" id="opt3" onclick="selectOpt(3)">Bに共感</button>
+        </div>
+        <p id="quiz-hint">// AUTO-ADVANCE ENABLED</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="page-result" class="page page-result" style="display:none">
+    <div id="result-page" class="result-wrap">
+
+      <!-- Puzzle & Dragons-style RESULT hero -->
+      <div id="result-hero" class="puz-hero">
+        <!-- Sparkle particles layer -->
+        <div class="puz-sparkles" aria-hidden="true"></div>
+        <!-- Beam-light radial behind card -->
+        <div class="puz-beams" aria-hidden="true"></div>
+
+        <!-- Trading card -->
+        <div class="puz-card">
+          <!-- Card frame top: type code as element gem -->
+          <div class="puz-card-top">
+            <div class="puz-element-gem"><span id="result-code-text"></span></div>
+            <div class="puz-rarity" aria-label="Rarity"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+          </div>
+
+          <!-- Big character art -->
+          <div class="puz-character">
+            <div class="puz-character-glow"></div>
+            <div class="puz-character-aura"></div>
+            <div id="result-character-wrap" class="puz-character-inner">
+              <img id="result-img" alt="" style="display:none">
+              <span id="result-emoji-fallback"></span>
+            </div>
+            <!-- Decorative orbs around character -->
+            <span class="puz-orb puz-orb-1"></span>
+            <span class="puz-orb puz-orb-2"></span>
+            <span class="puz-orb puz-orb-3"></span>
+            <span class="puz-orb puz-orb-4"></span>
+          </div>
+
+          <!-- Name strip -->
+          <div class="puz-name-strip">
+            <p class="puz-en" id="result-en"></p>
+            <h2 class="puz-name" id="result-name"></h2>
+          </div>
+
+          <!-- Tagline (catchphrase) -->
+          <p class="puz-tagline" id="result-tagline"></p>
+
+          <!-- Status bars (4 axes as game stats) -->
+          <div class="puz-stats" id="puz-stats-host"></div>
+
+          <!-- Type/element pills -->
+          <div class="puz-type-pills" id="puz-type-pills"></div>
+        </div>
+
+        <!-- Legacy hidden elements -->
+        <div id="result-code-text-2" style="display:none"></div>
+        <div id="result-code-badge" style="display:none"></div>
+        <div id="result-arch-label" style="display:none"></div>
+        <div id="result-elevation" style="display:none"></div>
+        <img id="result-bg-img" style="display:none">
+      </div>
+
+      <!-- TYPE BALANCE (always open) -->
+      <div class="result-section glass" style="animation-delay:.05s">
+        <details open>
+          <summary>
+            <span class="section-label"><span class="sec-num">01</span>TYPE BALANCE</span>
+            <span class="section-chevron">▼</span>
+          </summary>
+          <div class="section-body">
+            <div id="axis-result"></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- PERSONALITY (open) -->
+      <div class="result-section glass" style="animation-delay:.1s">
+        <details open>
+          <summary>
+            <span class="section-label"><span class="sec-num">02</span>PERSONALITY</span>
+            <span class="section-chevron">▼</span>
+          </summary>
+          <div class="section-body">
+            <p class="result-text" id="result-desc"></p>
+          </div>
+        </details>
+      </div>
+
+      <!-- STRENGTHS / WEAKNESSES -->
+      <div class="sw-grid">
+        <div class="sw-card strength-card">
+          <div class="sw-label s">▲ STRENGTHS</div>
+          <div id="result-strengths"></div>
+        </div>
+        <div class="sw-card weakness-card">
+          <div class="sw-label w">▼ WEAKNESSES</div>
+          <div id="result-weaknesses"></div>
+        </div>
+      </div>
+
+      <!-- CTA inline -->
+      <div class="cta-inline">
+        <p class="cta-pre">あなたのタイプを活かせる<br>建築設計の仕事を探す。</p>
+        <a id="cta-link" href="#" target="_blank" rel="noopener noreferrer"
+           onclick="trackCta()">
+          A-WORKER で探す →
+        </a>
+      </div>
+
+      <!-- 建築学生あるある (collapsed) -->
+      <div class="result-section glass" style="animation-delay:.2s">
+        <details>
+          <summary>
+            <span class="section-label"><span class="sec-num">03</span>建築学生あるある</span>
+            <span class="section-chevron">▼</span>
+          </summary>
+          <div class="section-body" id="result-anecdotes"></div>
+        </details>
+      </div>
+
+      <!-- CAREER DIRECTION (collapsed) -->
+      <div class="result-section glass" style="animation-delay:.25s">
+        <details>
+          <summary>
+            <span class="section-label"><span class="sec-num">04</span>CAREER DIRECTION</span>
+            <span class="section-chevron">▼</span>
+          </summary>
+          <div class="section-body">
+            <div class="career-tags" id="result-career"></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- GROUP ROLE (collapsed) -->
+      <div class="result-section glass" style="animation-delay:.3s">
+        <details>
+          <summary>
+            <span class="section-label"><span class="sec-num">05</span>GROUP ROLE</span>
+            <span class="section-chevron">▼</span>
+          </summary>
+          <div class="section-body">
+            <div class="detail-list" id="result-group-role"></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- COMPATIBILITY (collapsed) -->
+      <div class="result-section glass" style="animation-delay:.35s">
+        <details>
+          <summary>
+            <span class="section-label"><span class="sec-num">06</span>COMPATIBILITY</span>
+            <span class="section-chevron">▼</span>
+          </summary>
+          <div class="section-body">
+            <div class="compat-grid">
+              <div>
+                <div class="sw-label s" style="margin-bottom:10px">◆ GOOD MATCH</div>
+                <div id="result-compat-good"></div>
+              </div>
+              <div>
+                <div class="sw-label w" style="margin-bottom:10px">◇ WATCH OUT</div>
+                <div id="result-compat-bad"></div>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- Share -->
+      <div class="share-section">
+        <button id="share-x"    class="share-btn x">X / TWITTER</button>
+        <button id="share-line" class="share-btn line">LINE</button>
+        <button id="share-save" class="share-btn save">SAVE IMAGE</button>
+        <div id="share-status"></div>
+      </div>
+
+      <button id="btn-restart">↻ RESTART DIAGNOSIS</button>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- Offscreen share card -->
+<div id="share-card-canvas" class="share-card-canvas" aria-hidden="true"></div>
+
+<script>
+// ── Config ──────────────────────────────────────────────
+const AWORKER_URL = 'https://a-worker.com/regist'; // A-worker 会員登録ページ
+
+// Hand-picked Unsplash architecture photos — one per type
+const TYPE_PHOTOS = {
+  VFCE: '1517232115160-ff93364542dd', // parametric futuristic
+  VFCP: '1487958449943-2429e8be8625', // modernist white
+  VFIE: '1486718448742-163732cd1544', // spiral staircase
+  VFIP: '1545324418-cc1a3fa10c00',    // architectural form
+  VSCE: '1503387762-592deb58ef4e',    // skyscraper looking up
+  VSCP: '1429497419816-9ca5cfb4571a', // urban
+  VSIE: '1480714378408-67cf0d13bc1b', // structure
+  VSIP: '1473893604213-3df9c15611c0', // architectural detail
+  RFCE: '1449157291145-7efd050a4d0e', // building
+  RFCP: '1448630360428-65456885c650', // modern
+  RFIE: '1493809842364-78817add7ffb', // creative
+  RFIP: '1574958269340-fa927503f3dd', // craftsman
+  RSCE: '1496564203457-11bb12075d90', // Calatrava-like
+  RSCP: '1466442929976-97f336a657be', // structural
+  RSIE: '1494145904049-0dca59b4bbad', // industrial
+  RSIP: '1565008447742-97f6f38c985c'  // analytical
+};
+function typePhotoURL(code, w = 1200) {
+  const id = TYPE_PHOTOS[code] || TYPE_PHOTOS.VFCE;
+  return `https://images.unsplash.com/photo-${id}?w=${w}&q=85&fm=jpg`;
+}
+
+// ── Questions (Excel 最終版より) ─────────────────────────
+const questions = [
+  // index 0: value Q1 (F/S)
+  { axis: 'value',
+    A: '魅力的だと感じる建築は、大胆なフォルムや、視覚的に印象に残る空間構成が多い',
+    B: '魅力的だと感じる建築は、使いやすさ・機能性・構造美がバランスよく成立していることが多い' },
+  // index 1: worldview Q1 (V/R)
+  { axis: 'worldview',
+    A: 'まだ見ぬ未来のライフスタイルや、社会へのメッセージを提案することにワクワクする。',
+    B: '目の前の敷地課題を解決し、具体的で質の高い空間を実現することにやりがいを感じる。' },
+  // index 2: worldview Q2 (V/R)
+  { axis: 'worldview',
+    A: '理想の建築像をまず自由に描きたい',
+    B: '条件や制約から最適な形を見つけたい' },
+  // index 3: value Q2 (F/S)
+  { axis: 'value',
+    A: '空間の雰囲気や素材の表情に敏感だ',
+    B: '動線や用途の合理性を意識して設計する' },
+  // index 4: process Q1 (E/P)
+  { axis: 'process',
+    A: '手を動かしながら試行錯誤して考える',
+    B: '計画を立ててから進める方が安心する' },
+  // index 5: process Q2 (E/P)
+  { axis: 'process',
+    A: '面白い案が見つかるなら、直前でも設計変更を厭わない。プロセスは「発見」のためにある。',
+    B: 'クオリティとリスクを管理するため、決定事項は覆さない。プロセスは「完遂」のためにある。' },
+  // index 6: workstyle Q1 (C/I)
+  { axis: 'workstyle',
+    A: 'チームで話しながら考える方が力を発揮できる',
+    B: '一人で黙々と集中する方が力を発揮できる' },
+  // index 7: workstyle Q2 (C/I)
+  { axis: 'workstyle',
+    A: '他者の意見を取り入れながら調整するのが得意',
+    B: '自分の世界観や美学を大切にしている' },
+  // index 8: worldview Q3 (V/R)
+  { axis: 'worldview',
+    A: '「いつか実現したい未来」に惹かれる',
+    B: '「今できる現実的な解」に価値を感じる' },
+  // index 9: workstyle Q3 (C/I)
+  { axis: 'workstyle',
+    A: 'スタッフや専門家とブレインストーミングを行い、議論の中で予期せぬアイデアが出るのを好む。',
+    B: 'まずは一人で集中してスケッチやスタディを行い、自分の中のコアアイデアを固めるのを好む。' },
+  // index 10: process Q3 (E/P)
+  { axis: 'process',
+    A: '締切直前まで粘って最後に仕上げることが多い',
+    B: '段階的に進めて余裕を持って仕上げたい' },
+  // index 11: value Q3 (F/S)
+  { axis: 'value',
+    A: '美しい形に心が動く',
+    B: '意図に適った機能性に納得感を感じる' },
+  // index 12: workstyle Q4 (C/I)
+  { axis: 'workstyle',
+    A: 'チーム全体の合意形成を重視したい',
+    B: '最終判断は自分の価値観で決めたい' },
+  // index 13: process Q4 (E/P)
+  { axis: 'process',
+    A: 'とにかく手を動かし、模型やドローイングを大量に作ることで、偶然性の中から答えを探る。',
+    B: '全体の要件を整理し、スケジュールとタスクを明確にしてから、着実に解像度を上げていく。' },
+  // index 14: worldview Q4 (V/R)
+  { axis: 'worldview',
+    A: 'コンセプトづくりが一番楽しい',
+    B: '実際に形にしていく過程が好き' },
+  // index 15: value Q4 (F/S)
+  { axis: 'value',
+    A: '理屈では説明できない、感覚や情緒に訴えかける「現象的な美しさ」を信じている。',
+    B: '無駄が削ぎ落とされ、すべての要素に理由がある「論理的な美しさ」を信じている。' },
+  // index 16: process Q5 (E/P)
+  { axis: 'process',
+    A: '全体のスケジュールやタスクに縛られすぎず、柔軟に進めていく方が安心できる。',
+    B: '設計を始める前に、全体のスケジュールとタスクをきっちり決めて、その通りに進まないと不安になる。' },
+  // index 17: worldview Q5 (V/R)
+  { axis: 'worldview',
+    A: 'まず「あるべき姿」や「強いコンセプト」を言語化・図式化し、そこから具体的な形を導き出す。',
+    B: '敷地の形状、周辺環境、法規といった「与条件」を整理し、パズルを解くように形を導き出す。' },
+  // index 18: workstyle Q5 (C/I)
+  { axis: 'workstyle',
+    A: '設計上の難問に直面した際、チームメンバーを集め、ブレインストーミングや議論を行う',
+    B: '一人で静かな場所に籠り、スケッチや思索に没頭する' },
+  // index 19: value Q5 (F/S)
+  { axis: 'value',
+    A: '設計初期に最も重要視するスタディ手法は？ スケッチ・粘土模型・3Dレンダリングによる造形の検討',
+    B: 'ダイアグラム・プログラム分析・パラメトリックな数値解析' }
+];
+
+const AXES = [
+  { key: 'worldview', codeA: 'V', codeB: 'R', label: '世界観軸',    nameA: '構想型', nameB: '現実型', englishA: 'Vision',        englishB: 'Realistic'    },
+  { key: 'value',     codeA: 'F', codeB: 'S', label: '価値志向軸',  nameA: '造形志向', nameB: '機能志向', englishA: 'Form',        englishB: 'System'       },
+  { key: 'workstyle', codeA: 'C', codeB: 'I', label: '働き方軸',    nameA: '組織型', nameB: '個人型', englishA: 'Collaborative', englishB: 'Independent'  },
+  { key: 'process',   codeA: 'E', codeB: 'P', label: 'プロセス軸',  nameA: '探索型', nameB: '計画型', englishA: 'Explore',       englishB: 'Plan'         }
+];
+
+const AXIS_LABEL = {
+  worldview: '世界観軸 (V/R)',
+  value:     '価値志向軸 (F/S)',
+  workstyle: '働き方軸 (C/I)',
+  process:   'プロセス軸 (E/P)'
+};
+
+// ── 16 Types ────────────────────────────────────────────
+const results = {
+  "VFCE": {
+    code:"VFCE", creature:"ビジョンイルカ", english:"Vision Dolphin", emoji:"🐬",
+    tagline:"感性とチームワークで未来を描く構想家。",
+    color:"#4FC3F7",
+    description:"澄んだ感性と直感を武器に、未来志向で挑むタイプ。人の感情に敏感で、会議の空気を読んで適切な言葉を添える。抽象概念をつかむのが得意で、アイデアの種を見つける天才。周囲への気遣いで疲れることもあるが、迷った時に核心を突く発言ができる。一方、論理整理が苦手になりがちで、最終直前に抱えることも。将来は企画・演出・都市系など世界観を扱う領域で強みを活かしやすい。",
+    strengths:["コンセプト化が得意","共感力が高くチームをまとめる","未来志向で企画が得意","抽象的な価値を言語化する能力"],
+    weaknesses:["細部の詰めやルーティン作業が苦手","論理的説明がやや弱い","気遣いすぎて疲弊しがち","急な現場調整で混乱することも"],
+    archi_anecdotes:["気づけば世界観のメモグラフィが増えている","模型は雰囲気重要で角の取り方に異常なこだわり","教員に「コンセプトは良いね、裏付けと根拠が薄い」と言われがち","窓に観葉植物置きがち","アイデアは早いのに形になるのが遅い","チームの空気を読んで潤滑油になる"],
+    career:["企画開発・都市計画・公共系演出","大規模プロジェクトの初期構想担当","デベロッパーの企画職・戦略部門","実需連携プロジェクトのコーディネーター"],
+    group_role:["テーマ設定・企画・ストーリー構成を担当すると実力発揮","プレゼンの導入部分を作らせると強い","模型のフィニッシャーに世界観仕上げが得意","図面作成・工程管理を任せると課題が露呈"],
+    work_scene:["コワーキングスペースでメンバーの話を整理しながら大きな方向性を示す姿が象徴的","模型に観葉植物を置く","スケッチが優れた線グラフみたいになる","プレゼンのアップ仕上げでカフェに行きがち","人間関係で疲れると海を見ると回復する"],
+    compatibility_good:["VFIE（タコ）：世界観×表現力の爆発ペア","VFCP（クジラ）：感性を構成で支える安定バランス"],
+    compatibility_bad:["RSCP（ワニ）：感性と論理がかみ合わない平行線"]
+  },
+  "VFCP": {
+    code:"VFCP", creature:"マエストロクジラ", english:"Maestro Whale", emoji:"🐋",
+    tagline:"美と秩序で大海原を導くリーダー設計者。",
+    color:"#5C6BC0",
+    description:"落ち着いていて信頼感が圧倒的。美学が安定したガレオン的軸でチームを引っ張る体現者。部分から全体最適を見る傾向。秩序・構成・バランスに強く、課題を読んだ段階で全体の構成や時間配分が見えているタイプ。チーム内では自然と舵取り役になる。提案の整理・レイアウト・優先順位の判断も得意。批評会でも「破綻しない」と評価されやすい。ただし大きな挑戦を減らしがちで、若手の自由案にやや厳しい。",
+    strengths:["統率力が高い","整然とした判断ができる","大規模案件で力発揮","美意識と合理性の両立"],
+    weaknesses:["若手の自由案に厳しい","細部の遊びが理解しにくい","正しさを重視して窮屈になることも"],
+    archi_anecdotes:["課題の要求条件をすみずみまで読む","レイアウトに無駄を作りたがらない","1年生の頃から批評会で安定感を褒められがち","図面チェックの精度が高い","仕上げる前に合格した","後輩から「なんか大人っぽい」と言われがち"],
+    career:["プロジェクトマネージャー・官庁建設・設計監修","公共建築のリーダー","組織設計で主任・主査ポジションへ"],
+    group_role:["チームの全体構成を整えると安定","プレゼンの最終調整","レイアウト・構図の最終決定","走りすぎる案を止める安全装置"],
+    work_scene:["会議では静かに座っているのに、最後の3分で完璧にまとめて全員が納得。図面チェックは鋭い。若手に対してはプレッシャーよりも安心感が先に来る","素材選びが一手","窓の前が整理されている","図面の仕上げに厳格","若手に「安定感がある」と言われがち"],
+    compatibility_good:["VSCE（サメ）：構成×論理の無音コンビ","RFCE（ペンギン）：構成と共感が調和した温かい設計"],
+    compatibility_bad:["VFIP（フィッシュ）：構成と丁寧なペースが不一致"]
+  },
+  "VFIE": {
+    code:"VFIE", creature:"アーティストタコ", english:"Artist Octopus", emoji:"🐙",
+    tagline:"自由な発想で空間を紡ぐ夢想家。",
+    color:"#EC407A",
+    description:"超・感性型。アイデアは波のように溢れ出す。気分によって生産性が劇的に上下する。誰よりも独創的だが、説明は苦手。感性と感覚の爆発力が強く、スケッチ・模型・CGなどすべてがアート寄りになるタイプ。没入すると誰も話しかけられないほど集中する。批評会でも「心が洗われる」と言われがち。ただし説明が感覚的になりすぎて論理の部分が弱くなることがある。学生のうちに言語化の練習を少し積むだけで、表現×説得力のバランスが大幅に向上する。",
+    strengths:["独創性が高い","素材・色彩への感度","アート×建築の融合に強い","気づいたら周りが見えなくなる集中力"],
+    weaknesses:["直感が天運","論理説明が苦手","ムードに左右されやすい"],
+    archi_anecdotes:["模型・素材に異常にこだわる","教室の隅でひそひそして作業","スケッチが得意","図面作成がちと遅い","Pinterestが教科書","気分乗ってる時は最強、乗らないと沈黙","窓を眺めるのに数作は綺麗"],
+    career:["アトリエ系演出・展示デザイン・アンビルト","アトリエ事務所として独立","ブランディング空間"],
+    group_role:["コンセプトビジュアル担当","模型の表現要素・素材選び","空間の雰囲気作り","スケジュール管理をさせると課題が露呈"],
+    work_scene:["アトリエの隅で、ひそひそしながら模型にずっと触っている。窓の中は謎の素材で溢れ、スケッチがぐちゃっと積み重なる","資料は Pinterest が定番","ぼーっとしていて時間を忘れる","雰囲気を読みがち"],
+    compatibility_good:["VSIE（イカ）：表現×技術の圧倒的イノベーション","VFCE（イルカ）：物語とアートに最良の感性共鳴"],
+    compatibility_bad:["RSCE（シロクマ）：感性とロジックの絶縁"]
+  },
+  "VFIP": {
+    code:"VFIP", creature:"ソロタリーフィッシュ", english:"Solitary Fish", emoji:"🐠",
+    tagline:"美を極める孤高のデザイン職人。",
+    color:"#80DEEA",
+    description:"美意識の高さは16タイプ随一。孤独を苦にしない。自分の世界で完璧な美を追求するタイプ。チーム作業は苦手だが、ひとりでやらせると圧倒的なクオリティを出す。静かに確実に作業を進め、美しさと精度に際限なくこだわる。線1本・余白1mmにまで意識が行き届いている。批評会でも「丁寧で綺麗」と評価されがち。ただし細部に没頭しすぎて進行が遅れがちで、全体の大胆さが不足することもある。将来的には特定の細かい作業に特化した職種が向く。",
+    strengths:["審美眼×精巧性","集中力が驚異的","細かい寸法に強い"],
+    weaknesses:["協調が苦手","柔軟な方向転換が苦手","コミュニケーションが少ない"],
+    archi_anecdotes:["黙って黙々と作業","図面の線厚に異常なこだわり","余白・モノトーンの感じが好き","批評会ではコメント少ない","作品は綺麗でシック","ぼーっとして最終日に徹夜常習","でも妥協は絶対しない"],
+    career:["アトリエ設計・家具デザイン","プロダクト開発・研究職"],
+    group_role:["どんな作業を任せても高品質","細かい図面・仕上げ担当で精度を高める","模型の最後の仕上げを強く担当","意見を言わないので誤解されがち"],
+    work_scene:["静かで落ち着いた作業スペースで、深夜に黙ると線の太さを調整している。誰に邪魔されたくないタイプ","線厚設定に当たりがち","黒い机が好き","余白の扱いが一手","仕上げチェックが鋭い"],
+    compatibility_good:["RSIP（シャチ）：精度と論理が互いに積み上げる安定型","VFCP（クジラ）：美しさ×構成力の静かな最適解"],
+    compatibility_bad:["RFIE（ラッコ）：試作の虫に飲まれた職人ワーカー"]
+  },
+  "VSCE": {
+    code:"VSCE", creature:"ロジックサメ", english:"Logic Shark", emoji:"🦈",
+    tagline:"理論とスピードで構造を制す実務派。",
+    color:"#546E7A",
+    description:"16タイプの中で最も合理性に優れたタイプ。数字・構造・整合性が大好物。判断が早く、感性より事実で判断する。曖昧さが嫌いで「結論は？」と先に考えがち。状況を瞬時に整理して最短で正解に近づく道を探す傾向がある。図面の矛盾に敏感で、最終日に他人のミスを見つけて直してしまうほど精度にこだわる。批評会では鋭い質問に「落ち着いた」と評されやすい。感覚的・抽象的な議論にはやや気を遣う意識がある。学生のうちに遊び心と世界観の強さを少し混ぜるだけで設計がさらに豊かになる。",
+    strengths:["論理力・情報処理能力が高い","構造・設計的視点が強い","判断がクリアでブレない","問題解決力が高い"],
+    weaknesses:["感情コミュニケーションが苦手","直感型の人との衝突が発生しやすい","感性的な美しさが難しい","曖昧な案件が苦手"],
+    archi_anecdotes:["課題の要求条件を最初に箇条書きで整理","「結論から言うと…」が口癖","図面の整合性が合わないと寝られない","スタジオで常に冷静","「ダメな案はダメ」と言うので誤解されることも","気づいたらみんなのモデルの寸法を確認している","教員の言いそうなことを予測して言い当てる"],
+    career:["構造設計・設備設計・BIMエンジニア","研究開発・建築コンサル","合理性重視のゼネコン設計部"],
+    group_role:["要求条件の分析","論理的な図面構成","整合性チェック（最強）","プレゼン資料の使いやすいレイアウト設計","モデリングの細部チェック"],
+    work_scene:["図面チェックで矛盾を秒で見つける。会議ではメモを最小限にし、必要なことだけを抽出し設計調整の中で揉めない時には「論点はここです」と場を整える","整合性が合わないと眠れない","最初に視点を箇条書きにしがち","データ資料に薄目",""],
+    compatibility_good:["VFCP（クジラ）：論理×構成の精度無双コンビ","RSCE（シロクマ）：精緻と構造化のエルゴロジック"],
+    compatibility_bad:["VFIE（タコ）：整合主義と行動性の大衝突"]
+  },
+  "VSCP": {
+    code:"VSCP", creature:"マネージャーアザラシ", english:"Manager Seal", emoji:"🦭",
+    tagline:"冷静沈着にプロジェクトを導く調整型リーダー。",
+    color:"#42A5F5",
+    description:"落ち着き・安定・調整力の三拍子。熱いのに冷静のバランスの絶妙な技能で、チームの中間管理職として圧倒的な信頼を誇る。混乱している現場にスッと入って沈静化できる力がある。グループ課題になると誰もがメモ・タスク表・スケジュールを作り、全員の進捗と役割が気になって仕方ない縁の下の安定役。自分の案よりチームの調整を優先してしまう。批評会で少し自分の作品を押し見せられることもある。実行力が強み。",
+    strengths:["調整力と安定感がずばぬけてクラス","現場と設計の橋渡しが上手い","冷静な判断力","リスク管理に強い"],
+    weaknesses:["プレッシャーを抱え込みがち","強いリーダーや強い個性に押されがち","発想力はやや劣る"],
+    archi_anecdotes:["グループLINEを管理しがち","課題スケジュールを真っ先に作る","自然に仲裁役になる","大声で言うのが苦手なタイプ","「このタスクが薄い」とすぐ気付いている","批評会の準備は早めに始めるタイプ","資料を清書感のある感じに仕上げる"],
+    career:["プロジェクトマネージャー・施工管理・設計監修","ゼネコンの現場主任","官庁の建築系ポジション"],
+    group_role:["プロジェクトマネジメント","スケジュール・タスク分担の管理","メンバー間の調整（非常に強い）","現実路線の案のまとめ","進行役が得意"],
+    work_scene:["図面・現場・役所とのやりとりが絶えないのに気になる所は整理する。プロジェクト全体を少しずつ前へ向かうタイプ。思えば現場へ行くと不思議と場が落ち着き調整のプロ","チェックリストを作りたがる","関係者からの相談を断らない","図面の仕入れ数が多い"],
+    compatibility_good:["RFCE（ペンギン）：調整×共感の優れた現場最強ペア","VFCP（クジラ）：管理×構成が生む実務MAX"],
+    compatibility_bad:["VFIE（タコ）：破壊行動と管理の崩壊"]
+  },
+  "VSIE": {
+    code:"VSIE", creature:"イノベーションイカ", english:"Innovation Squid", emoji:"🦑",
+    tagline:"技術と遊び心で新しい建築を生む。",
+    color:"#29B6F6",
+    description:"技術好き×好奇心×柔軟性のトリプルコンビタイプ。デジタル・最新技術・研究にワクワクする。ルールの中に遊びを見つけて改善提案を出すクリエイティブエンジニア。新しい技術やソフトに強く、気づけばGrasshopperやBIMで遊んでしまうタイプ。連続的な試行やCGの質感調整が得意で、未来的な作品を作る。前面では技術が先行しすぎて空間の使われ方の説明が曖昧になることがある。学生時代に人の視点を学ぶと作品の完成度が一気に跳ね上がる。",
+    strengths:["技術探究心が強い","改善・改良が得意","新技術導入の先導者","柔軟な発想で問題解決"],
+    weaknesses:["飽きっぽい","コンテンツ積み上げが苦手","時間が足りないとき"],
+    archi_anecdotes:["BIM・VRなど新しいツールに誰より詳しい","レンダリングの設定を研究している","気づいたらGrasshopper遊んでいる","技術の実験が楽しすぎて時間を忘れる","素材サンプルや建築カタログが好き","今までと違う滑らかな案が出せるようになる","批評会で「新しい視点で面白い」と褒めてもらいがち"],
+    career:["設備設計・BIM開発・研究職","ソフトメーカー・建材メーカー"],
+    group_role:["デジタル技術導入担当","表現の革新（新しい模型や新表現）","改善・改良のアイデア出し","モデリングスピードが速い"],
+    work_scene:["BIMやデジタルの新機能を試しながら「これ、もっと良いですよ！」と沸き上がる。建材メーカーのショールームで薫陶しがち","新しいツールをすぐ試す","パラメトリック設計が好き","周りから変人と言われがち"],
+    compatibility_good:["VFIE（タコ）：技術×表現で唯一無二の革新建築を生む","VSCE（サメ）：実験を論理で固める高性能ペア"],
+    compatibility_bad:["RSCP（ワニ）：挑戦心と現実主義の完全衝突"]
+  },
+  "VSIP": {
+    code:"VSIP", creature:"マスターカメ", english:"Master Turtle", emoji:"🐢",
+    tagline:"慎重かつ緻密に積み上げる堅実派。",
+    color:"#66BB6A",
+    description:"しっかり・確実・丁寧なアプローチ派。きっちりした積み上げによって高品質を実現する安定型。緻密で抑制できてリスク回避能力が高く、情報整理から入り、一つ一つ丁寧に案を積み上げる。作業スペースは遅いが、間違いが少なく、最終段階で充実した完成度に辿り着くタイプ。周りが焦っていても落ち着いて作業できる強みがある。突然課題や短期制作では速度不足が目立つことも。学生のうちにスピード優先の粗制作を一度経験すると、得意な丁寧さに、さらに深みを出せる。",
+    strengths:["正確性と安定性","リスク管理能力が高い","継続力の塊","充実した寸法検討"],
+    weaknesses:["決断が遅い","変化への対応が苦手","スピード負荷に弱い"],
+    archi_anecdotes:["課題初日から地図に作業進めている","きっちりしすぎる","仕上げに妙な安定感がある","植え字を埋めるなど細かい部分が異常に丁寧","古いけどいつの間にか細かい修正されている","グループ課題では裏方仕事を1人で進める","驚くほど性格はいいけど一方で優秀"],
+    career:["構造設計・施工管理・研究職","地図だけ難易度の精度仕事に向く"],
+    group_role:["詳細図面担当","寸法・精度担当","模型の仕上げ・細部調整","設計案を走らせないための見守り役"],
+    work_scene:["朝から作業計画を立てて、一つずつ丁寧になるタイプ。現場でも確実な判断を出せる。信頼度は高い","図面のチェックが異常に細かい","時間派、だが準備は整っている","慎重が多い"],
+    compatibility_good:["RSIP（シャチ）：深い探索×丁寧積み上げの充実最強ペア","RFCP（フグ）：誠実と丁寧の充実ライン"],
+    compatibility_bad:["VFCE（イルカ）：慎重と感性の永遠の平行線"]
+  },
+  "RFCE": {
+    code:"RFCE", creature:"コンテクストペンギン", english:"Context Penguin", emoji:"🐧",
+    tagline:"環境と人をつなぐ温かなデザイナー。",
+    color:"#26A69A",
+    description:"温和で聴き上手。相手の気持ちや背景を自然に読み取り、空間づくりに反映できる共感型デザイナー。環境・文脈・地域性を重視し、住民との対話からアイデアを言いまとめる。読んだだけで良いのが滲み出るタイプ。敷地・地域・人の気持ちを想像するのが自然と得意で、課題の初期段階から「あの人はどう感じる？」と人の視点で考え始める。図面にも居心地の良い余裕が宿る場所・動線が自然に生まれる。批評会でも「温かい建築」「使いやすい」と評価されることが多い。ただ刺激的なコンセプトを踏み込みにくい。",
+    strengths:["共感力が非常に高い","公共性・環境性に強い","調和・バランス感覚が優れている","対話の中で価値を見つける能力"],
+    weaknesses:["強い個性に押されがち","意見を率直に言いにくい","スピード負荷が苦手"],
+    archi_anecdotes:["ワークショップや街歩きが好き","課題の敷地分析がちと丁寧","「人がどう使うか」をずっと考えている","コンセプトのキーワードを「ぬくもり」にしがち","模型に小さな住民フィギュア置きがち","批評会で「温かい建築だ！」と褒めてもらいがち","スタジオの空気が良くなると静かに仲裁"],
+    career:["公共建築・都市計画・演出設計","リフォーム・地域系プロジェクト","住民参加プロジェクト"],
+    group_role:["敷地分析・ヒアリング担当","空間の雰囲気・使い方の調整","プレゼンの読みやすさを上げる役","メンバーの意見をまとめる調和役"],
+    work_scene:["地域ワークショップで住民の声を丁寧に拾いながら、空間の居心地をスケッチに落とし込む。資料には「ぬくもり」丸みのある線が多い","植え字の座り心地にもこだわる","模型に住民の人形を置きがち","自分が住みたいな、という空間を作る"],
+    compatibility_good:["VFCP（クジラ）：共感×構成の優れた論理×感情的引力", "RSCE（シロクマ）：感性と論理が互いに支え合う情報設計"],
+    compatibility_bad:["VSCE（サメ）：共感と合理のまっすぐな衝突"]
+  },
+  "RFCP": {
+    code:"RFCP", creature:"プランフグ", english:"Plan Puffer", emoji:"🐡",
+    tagline:"安定と丁寧さで空間を整える堅実設計者。",
+    color:"#FFA726",
+    description:"真面目で丁寧。人に安心感を与えるタイプ。派手なひらめきはないが、図面・資料・工程など基本をきっちり押さえる。責任感が強く、約束を守るタイプ。サポート役として優秀で、チームにひとりいると安定する。丁寧で読みやすい図面が特徴で、信頼を積みながら確実に作業を進め、美しさと精度にとことんこだわる。線のダルさがなく、最終物もきちんと整えて提出する。実行力が強い一方で、自分から大きな案を出すことは少なく、保守的にまとまりすぎてしまうことも。",
+    strengths:["丁寧さと正確性","充実した図面作成","スケジュールを守る","聴き役が得意"],
+    weaknesses:["アイデア創出はやや苦手","強い主張ができない","急な方針転換に弱い"],
+    archi_anecdotes:["図面をとにかく丁寧","批評会で「基本がきっちりしている」と褒めてもらいがち","作業スペースがいつもきれい","仕付け・ツールなど鉛筆が整っている","模型は地図だけど精度が安定して高い","無表情ぶってもちゃんと真面目にやる","徹夜するときは静かに淡々と作業"],
+    career:["演出設計・設計監修","ハウスメーカー・工務店で安定活躍","公共系案件でも信頼されるタイプ"],
+    group_role:["プレース・図面整理","資料のフォーマット作成","スケジュール表の管理","実現性の検討（地図に超大事）"],
+    work_scene:["窓には整理された図面と仕付け。上司の指示を正確に整理し、丁寧に仕上げている。作業スペースは遅いが品質は安心の安定感","トレース作業が好き","寸法を丁寧に押さえがち","机の整理が習慣"],
+    compatibility_good:["VFIP（フィッシュ）：丁寧×美意識の精妙アートライン","VSIP（カメ）：誠実作業×慎重検討の充実ペア"],
+    compatibility_bad:["VSIE（イカ）：丁寧の限界とスピードの暴走"]
+  },
+  "RFIE": {
+    code:"RFIE", creature:"フィールドラッコ", english:"Field Otter", emoji:"🦦",
+    tagline:"手を動かしながら考える柔軟な現場派。",
+    color:"#EF5350",
+    description:"座って考えるより「触れて理解する」実践型。好奇心旺盛で行動が早く、現場に出るとスイッチが入る。図面より現物で理解する傾向が強く、人会ったり、現場の職人さんから親しみやすいと好かれる。手を動かしながら考え、実践力で、図面よりも模型・スタディの間で力負けする傾向も。感覚から理解するため、複雑な場合は設計ロジックを整理するの難しくなることがある。図面より模型の説得力が高い。理論的な資料や説明が後手になりがち。将来的には現場・工務店系の分野などで強みを発揮しやすい。",
+    strengths:["現場対応能力が高い","柔軟性と行動力","観察力・試行錯誤タイプ","本質を素材で理解する"],
+    weaknesses:["机上作業が長く続かない","論理的資料が苦手","調整業務の資料化が遅れがち"],
+    archi_anecdotes:["まず模型を作って理解しようとする","職人さんと体質で細部に強い","現場見学が大好き","図面より形が先に決まるタイプ","教員に「模型はいい、図面から学べ」と言われがち","自分でも気づかないうちに作業量が多い","無意識で工具を使うのが上手"],
+    career:["施工管理・現場監督・設計補助","リノベ会社・工務店で大活躍","住宅系の細かい対応に強い"],
+    group_role:["模型制作","実現性の検証（現場感覚で強い）","素材・構法の検討","製作系のタスク全般"],
+    work_scene:["現場で詳細を確認しながら「これはどう納まる？」と職人と議論。サンプルを触りまくって理解し、帰社するとスケッチで一気にまとめる","サンプルを触る時間が長い","現場の方が集中できる","模型の作り方が大変"],
+    compatibility_good:["VSIE（イカ）：実験×技術の現場系イノベーター","RFCE（ペンギン）：現場感×生活感のぬくもり住棟"],
+    compatibility_bad:["RSIP（シャチ）：思い込み×考察の深さのすれ違い"]
+  },
+  "RFIP": {
+    code:"RFIP", creature:"クラフトカワウソ", english:"Craft Otter", emoji:"🦦",
+    tagline:"職人技と誠実さで形を磨く努力家。",
+    color:"#FF8A65",
+    description:"コツコツ型で努力家。細部に気を深く、ものづくりが好き。派手な主張はないが、丁寧さと継続力で確実に成長するタイプ。性格がいい。信頼度は非常に高く、模型や細部の作業が得意で、カルタや紙の扱いが驚くほど丁寧なクラフト職人気質。細かいノードの精度を高め、仕上げの美しさで感動させてもらいがち。一方、細部に没頭しすぎて全体の進行が遅れることがある。図面がきれいで安定感がある。ただ全体構成や大きな方向転換が苦手なため、学生時代に全体感を一度広げてから細部に入り込むクセをつけると一気に強くなる。",
+    strengths:["職人気質で細部のこだわりが強い","継続力と誠実さ","仕上げの品質に強いこだわり","人の信頼を得られる"],
+    weaknesses:["スピードが遅い","マルチタスクが苦手","自己主張が苦手"],
+    archi_anecdotes:["手を使う作業が好き","素材研究が好き","仕上げの美しさにこだわりが強い","作業速度は遅いが確実に仕上げる","「ぼーっとしてるのに話したらちょっと驚く」","教員に「細部が綺麗」と褒めてもらいがち","静かに長時間作業できるタイプ"],
+    career:["演出設計・家具制作・プロダクト開発","工務店・木工所・建材メーカー"],
+    group_role:["模型仕上げ","細部の作り込み","図面の調整","マテリアル仕上げ選定"],
+    work_scene:["木材サンプルを並べながらじっくり検討し、図面を丁寧に描き、現場に行けば職人と一緒に納まりを確認し時間はかかるが仕上げの精度は非常に高い","手の扱いを気にしない","素材にこだわりすぎる","仕上げチェックが鋭い"],
+    compatibility_good:["VFIP（フィッシュ）：細部職人×美意識の細仕事最強","RFCP（フグ）：細仕事×丁寧の安心精度"],
+    compatibility_bad:["VSIE（イカ）：細かい作業を高速変更で崩壊させる"]
+  },
+  "RSCE": {
+    code:"RSCE", creature:"ラショナルシロクマ", english:"Rational White Bear", emoji:"🐻‍❄️",
+    tagline:"ロジカルに世界を整理する知恵者。",
+    color:"#1565C0",
+    description:"最も理論的に美しさを構築するタイプ。情報を俯瞰して整理し、論理的な構造から美を導く戦略家。図解・フロー・概念図などを駆使して複雑な内容を明解に引き出し、機能的でかつ洗練されたアウトプットを常に目指す。無駄を落として、すべての要素に理由がある設計には、覗かない知性と真意が滲み出ている。「地味なのに洗練されている」と言われる。ただし抽象的な世界観には乗り切れず、論理に裏付けられた美しさを付けていく才能は圧倒的。スタジオでは静かに作業しているのに、最終日に完成度で殴ってしまうタイプ。",
+    strengths:["分析が得意","デザインの根拠を構造化して説明できる","判断にブレがない","効率化・システム化が得意"],
+    weaknesses:["デザイン議論でどこまでも美しい合理性を迷いがち","直感的だけの作品には疑問を持つ","細かすぎて厳しいと誤解されることも","根拠のない感性だけの話題が苦手"],
+    archi_anecdotes:["「人がどう使うか」をずっと考えている","口数は少いが、核心を突く発言が響く","A1の構図に美しさと整理が両立している","ベースに余白が多いのに説得力がある","色数を極端に少なく（白・黒・1アクセント色）","現地調査シートが異常に読みやすい","学生なのに実務的な図面を書きがち"],
+    career:["リノベーション系演出・構造設計・都市・公共の機能改善デザイン","大手ゼネコンのリニューアル部門・用途変更・既存建築の分析・動線改善","設計の技術統括・品質管理"],
+    group_role:["デザインの方向性を定義する","機能図・動線計画・構成案の作成","図面・資料のビジュアルバランス調整","分析・比較表の作成","最終成果物の美しさの最適化担当"],
+    work_scene:["既存建物の問題を冷静に整理して「どこを置き換えれば機能的で、美しいか？」と淡々と組み立てている。会議では静かな場所だが、必要な時だけ論理的なコメントを落とし重みのある存在","「美しい＝整理されている」が安全に一致している","無意識に常に「最適解」を探している","職場で「一番冷静」と言われがち"],
+    compatibility_good:["VSCE（サメ）：論理×体系化の計算し尽くした最強ロジック","VFCP（クジラ）：ロジックに構成力が乗り充実ライン"],
+    compatibility_bad:["VFIE（タコ）：ロジックと行動の言語絶縁"]
+  },
+  "RSCP": {
+    code:"RSCP", creature:"ビルダーワニ", english:"Builder Alligator", emoji:"🐊",
+    tagline:"統率と実行力で現場を制するリーダー。",
+    color:"#558B2F",
+    description:"現場力と管理力を併せ持つ「頼れるリーダー」。危険予知・判断スピード・統率力が高く、施工現場で圧倒的な信頼を得るタイプ。豪快に見えて細かい部分もよく見ている。現実的な視点で設計を進めるタイプで、「実際に建てる！」を最初に考える着実派。作業中は集中力が高く、構造・納まりの理解が早い。批評会でも「現実的」「説得力がある」と言いやすい。一方、表現の良さや遊び心は苦手で、実務派っぽい。学生のうち、意図的に大きな形や世界観に挑戦してみると設計の伸びしろが一気に広がる。",
+    strengths:["リーダーシップが強い","現場の統率力が高い","調整能力が抜群","短時間で状況を判断できる"],
+    weaknesses:["表現型の案が苦手","衝突が起きると強めに出がち","詰めの粘りが噴き出す"],
+    archi_anecdotes:["施工見学・現場系の授業が異常に好き","批評会の質疑に強い（冷静に答える）","図面の現実感が強い","作業の段取りが上手い","チームで問題が起きると自然にリーダー役","口数は多くないが、決断が早い","最終日のタスクをそれっぽくまとめる天才"],
+    career:["構造設計・施工管理・プロジェクトマネージャー","ゼネコンの現場主任","官庁の工事発注部門"],
+    group_role:["現実性の整理","タスク・作業工程管理","批評会での説明役（実務的）","図面の詰まりずらいスポットの判断"],
+    work_scene:["現場で職人・設計者・監督をまとめる空気が変わる存在。判断が早く、「鎧甲冑」のような構造にも強い。構法や施工性を踏まえた提案は現実度が高く、現場と設計の橋渡しで目立つという、信頼される現場に安心感をもたらす存在","指示が短くて正確","現場での歩くスピードが早い","安全靴が妙に似合う"],
+    compatibility_good:["VSCP（アザラシ）：現場×調整のプロジェクト最強運営","RSCE（シロクマ）：現実判断×論理整理の実務特化"],
+    compatibility_bad:["VFCE（イルカ）：現実と世界観の完全衝突"]
+  },
+  "RSIE": {
+    code:"RSIE", creature:"テックガニ", english:"Tech Crab", emoji:"🦀",
+    tagline:"技術と発想を両立させる研究肌の開拓者。",
+    color:"#0288D1",
+    description:"好奇心と技術力のトリプルコンビ。数字や図面が好きながら、同時に新しいものにも目が向く。研究的な深掘りと遊び心が共存するタイプで、建築やデジタル技術の可能性にワクワクする。研究室の機器や解析ツールと相性がよく、環境・構造・実験系のアプローチに強い理系寄りタイプ。グラフ・シミュレーション・性能比較など数字を読む資料で批評会の説得力を引き上げる。一方、作品としての良さや感覚的な世界観は後手になりがち。学生のうちに表現の練習を少し取り入れるだけで、研究力とデザイン力の両輪を持った強い設計者になれる。",
+    strengths:["研究力の高い","技術開発の素質","改善・改良が得意","深い思考と遊び心"],
+    weaknesses:["飽きっぽい","ルーティンが苦手","情報収集に飽き足りない"],
+    archi_anecdotes:["環境工学・解析ソフトに強い","データを見るとテンションが上がる","気づいたら新素材の論文を読んでいる","最終資料に性能比較や数値グラフを入れがち","研究室の機器がお気に入りになりがち","実験系授業で本気が出るタイプ","一人で深夜に作業してると突然作品レベルが上がる"],
+    career:["研究開発・BIMエンジニア・技術職","大学研究室・建材メーカー・システムエンジニア","構造・設備の高度解析"],
+    group_role:["技術検証","環境シミュレーション","デジタルデザイン","論理補強のための比較資料づくり"],
+    work_scene:["試験機の前でデータを取ったり、新素材サンプルを並べて楽しそうに分析している姿が目に浮かぶ。BIMやデジタルツールを誰よりも早く使いこなす","データ寄りになると急に元気","新しい建材カタログを読むのが好き","PCのショートカットキーが多用"],
+    compatibility_good:["VSIE（イカ）：技術×技術の最先端最強タッグ","RSCE（シロクマ）：技術思考×ロジックの情報強者"],
+    compatibility_bad:["VFIE（タコ）：精巧技術×突発感性の大事故ライン"]
+  },
+  "RSIP": {
+    code:"RSIP", creature:"アナライズシャチ", english:"Analyze Orca", emoji:"🐋",
+    tagline:"理論で美を構築する静かな分析家。",
+    color:"#7B1FA2",
+    description:"静かで強い。外面は極めて理論的。建築の美を感覚でなく構造・仕組みの美として捉える。感情表現は少ないが、深い思考力と継続力を持つ静かな職人。誰よりも静かに深く考える探索力で、図面や説明が一貫して論理的。表現が少なく、図面の精度と合理性が高い。批評会では「よく考えている」と評価されやすい。ただし自分のペースでじっくり案を詰めたがりで、チーム作業では目立つ意見が少なく、方向案で裏で静かに地影の縁の側面役になりがち。学生時代はひとまずプレゼンや初期構想に積極的に外へ出してみる経験をすると、思考の深さをさらに活かしやすくなる。",
+    strengths:["深い理論構築力","静かな集中力","長期的な継続作業が得意","論理的な美学の探求"],
+    weaknesses:["口数が少なく、誤解されることがある","スピード勝負に弱い","最初から主張しにくい"],
+    archi_anecdotes:["作業中・ほぼ無言","気づくと図面の細部が異常に整っている","「ノートを使いたがる」","質疑で「よく論理的に答える」のでちゃんと評価されがち","大人数議論が苦手","作業スペースはきっちりだが精度は最強","「あの人いつの間にあんな仕上げたの…」と言われる"],
+    career:["構造設計・設備設計","研究機関・技術検証業務","設計の品質管理ポジション"],
+    group_role:["図面の精度担当","整合チェック","論理的な設計説明","細部の美しさの追求"],
+    work_scene:["机で静かに構造計算や整合チェックを続ける姿が象徴的。現場でも数値に基づく的確な発言がある。信頼度は高い","図面を静かに修正し続ける","余白・配置・整合が異常に気になる","資料のフォルダ整理が得意"],
+    compatibility_good:["VSIP（カメ）：深い探索×丁寧積み上げの充実最強ペア","RFCP（フグ）：分析×丁寧の高精度ライン"],
+    compatibility_bad:["RFIE（ラッコ）：考え込む×まず動くの速度差"]
+  }
+};
+
+// ── State ────────────────────────────────────────────────
+let currentQ = 0;
+let answers = {};
+let isAdvancing = false;
+
+// ── GA4 helpers ──────────────────────────────────────────
+function gaEvent(name, params) {
+  if (typeof gtag === 'function') gtag('event', name, params || {});
+}
+function trackCta() {
+  gaEvent('cta_click', { destination: AWORKER_URL });
+}
+
+// ── Init decorations (blueprint drafting marks) ──────────
+(function initDeco() {
+  const layer = document.getElementById('deco-layer');
+  // Scattered drafting marks: section markers, dimension references, callouts
+  const marks = [
+    'A-A', 'B-B', 'C-C', 'D-D',
+    '+', '+', '+', '+',
+    '↕ 2400', '↔ 1800', '↔ 3600',
+    'φ150', 'R=250', '∠45°',
+    'EL.±0', 'EL.+3000', 'GL.',
+    'N↑', '◯1', '◯2', '◯3',
+    'SCALE 1:50', 'SCALE 1:100',
+    '— — —', '· · ·'
+  ];
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  for (let i = 0; i < 18; i++) {
+    const m = document.createElement('div');
+    m.className = 'drafting-mark';
+    m.textContent = marks[i % marks.length];
+    const left = 4 + Math.random() * 92;
+    const top  = 4 + Math.random() * 92;
+    Object.assign(m.style, {
+      left: left + '%',
+      top:  top + '%',
+      fontSize: (9 + Math.random()*3) + 'px',
+      opacity: 0.18 + Math.random()*0.22,
+      transform: `rotate(${Math.random()*8-4}deg)`
+    });
+    layer.appendChild(m);
+  }
+  // A few SVG crosshairs (grid intersection markers)
+  for (let i = 0; i < 6; i++) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 20 20');
+    svg.setAttribute('width','14');
+    svg.setAttribute('height','14');
+    svg.style.position = 'fixed';
+    svg.style.left = (5 + Math.random()*90) + '%';
+    svg.style.top  = (5 + Math.random()*90) + '%';
+    svg.style.opacity = 0.25 + Math.random()*0.15;
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = 0;
+    svg.innerHTML =
+      '<line x1="10" y1="2" x2="10" y2="18" stroke="#5fc1ee" stroke-width="0.8"/>' +
+      '<line x1="2" y1="10" x2="18" y2="10" stroke="#5fc1ee" stroke-width="0.8"/>' +
+      '<circle cx="10" cy="10" r="3" fill="none" stroke="#5fc1ee" stroke-width="0.8"/>';
+    layer.appendChild(svg);
+  }
+})();
+
+// ── Quiz ─────────────────────────────────────────────────
+document.getElementById('btn-start').addEventListener('click', startQuiz);
+document.getElementById('btn-back').addEventListener('click', goBack);
+document.getElementById('btn-restart').addEventListener('click', restart);
+
+function startQuiz() {
+  gaEvent('quiz_start');
+  document.getElementById('page-intro').style.display = 'none';
+  document.getElementById('page-quiz').style.display = 'flex';
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = questions[currentQ];
+  const num = String(currentQ + 1).padStart(2, '0');
+  const total = String(questions.length).padStart(2, '0');
+  const axisLabel = (AXIS_LABEL[q.axis] || '').toUpperCase();
+  document.getElementById('q-axis-label').textContent = '// AXIS · ' + axisLabel;
+  document.getElementById('q-num-text').textContent = 'Q.' + num;
+  document.getElementById('q-num-of').textContent = '/ ' + total;
+  document.getElementById('q-text-a').textContent = q.A;
+  document.getElementById('q-text-b').textContent = q.B;
+  document.getElementById('quiz-counter').textContent = 'Q.' + num + ' / ' + total;
+  const tbSheet = document.getElementById('tb-sheet');
+  if (tbSheet) tbSheet.textContent = num + ' / ' + total;
+  document.getElementById('progress-fill').style.width =
+    ((currentQ + 1) / questions.length * 100) + '%';
+  document.getElementById('btn-back').disabled = currentQ === 0;
+
+  const opts = document.querySelectorAll('.opt-btn');
+  opts.forEach(b => { b.disabled = false; b.className = 'opt-btn'; });
+  isAdvancing = false;
+}
+
+function selectOpt(val) {
+  if (isAdvancing) return;
+  isAdvancing = true;
+
+  const classes = ['selected-a1','selected-a2','selected-b2','selected-b1'];
+  document.querySelectorAll('.opt-btn').forEach((b, i) => {
+    b.className = 'opt-btn' + (i === val ? ' ' + classes[i] : '');
+    b.disabled = true;
+  });
+
+  answers[currentQ] = val;
+
+  setTimeout(() => {
+    const card = document.getElementById('question-card');
+    card.classList.add('slide-out');
+    setTimeout(() => {
+      card.classList.remove('slide-out');
+      if (currentQ < questions.length - 1) {
+        currentQ++;
+        renderQuestion();
+      } else {
+        gaEvent('quiz_complete', { questions_answered: questions.length });
+        showResult();
+      }
+    }, 260);
+  }, 350);
+}
+
+function goBack() {
+  if (currentQ === 0 || isAdvancing) return;
+  currentQ--;
+  renderQuestion();
+  const prev = answers[currentQ];
+  if (prev !== undefined) {
+    const classes = ['selected-a1','selected-a2','selected-b2','selected-b1'];
+    document.querySelectorAll('.opt-btn').forEach((b, i) => {
+      b.className = 'opt-btn' + (i === prev ? ' ' + classes[i] : '');
+    });
+  }
+}
+
+// ── Scoring (corrected) ──────────────────────────────────
+// Options: 0=Aに共感する(1pt) 1=ややA(2pt) 2=ややB(3pt) 3=Bに共感する(4pt)
+// Per axis total 5-20; ≤12 → left type, ≥13 → right type
+function getAnswerScore(answerIndex) {
+  return answerIndex + 1;
+}
+
+function calculateAxisScores() {
+  const s = { worldview: 0, value: 0, workstyle: 0, process: 0 };
+  questions.forEach((q, i) => {
+    if (answers[i] !== undefined) s[q.axis] += getAnswerScore(answers[i]);
+  });
+  return s;
+}
+
+function getTypeCode(axisScores) {
+  return AXES.map(a => axisScores[a.key] <= 12 ? a.codeA : a.codeB).join('');
+}
+
+function calculateResult() {
+  const scores = calculateAxisScores();
+  const code = getTypeCode(scores);
+  return results[code] || results['VFCE'];
+}
+
+// Convert hex color to RGB & build the per-type CSS variables (16p-style theming)
+function applyTypeTheme(hexColor) {
+  const hex = hexColor.replace('#','');
+  const r = parseInt(hex.substr(0,2), 16);
+  const g = parseInt(hex.substr(2,2), 16);
+  const b = parseInt(hex.substr(4,2), 16);
+  // Lighter version (mix with white at 70% weight)
+  const mix = (c, w = 0.78) => Math.round(c * (1-w) + 255 * w);
+  const soft = `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+  // Deeper version (mix with black at 25%)
+  const dark = (c, w = 0.25) => Math.round(c * (1-w));
+  const deep = `rgb(${dark(r)}, ${dark(g)}, ${dark(b)})`;
+  // Ultra-soft for bg
+  const bg = `rgb(${mix(r, 0.90)}, ${mix(g, 0.90)}, ${mix(b, 0.90)})`;
+  const root = document.documentElement;
+  root.style.setProperty('--type-color', hexColor);
+  root.style.setProperty('--type-color-soft', soft);
+  root.style.setProperty('--type-color-deep', deep);
+  root.style.setProperty('--type-bg', bg);
+}
+
+// ── Puzdra status bars (4 axes as RPG stats) ────────────
+function renderPuzStats(axisScores) {
+  const host = document.getElementById('puz-stats-host');
+  if (!host) return;
+  // Map axis → game-stat label & value (5-20 → 50-200 scaled for drama)
+  const map = [
+    { key: 'worldview', label: 'VIS' },   // 構想 → vision
+    { key: 'value',     label: 'AES' },   // 造形 → aesthetic
+    { key: 'workstyle', label: 'CRD' },   // 組織 → coordination
+    { key: 'process',   label: 'EXE' }    // プロセス → execution
+  ];
+  host.innerHTML = map.map(m => {
+    const raw = axisScores[m.key] || 5;
+    const pct = Math.round(((raw - 5) / 15) * 100);
+    const game = 50 + Math.round((raw - 5) * 10); // 50..200 game-style number
+    return `
+      <div class="puz-stat-row">
+        <span class="puz-stat-label">${m.label}</span>
+        <div class="puz-stat-track"><div class="puz-stat-fill" style="width:${pct}%"></div></div>
+        <span class="puz-stat-val">${game}</span>
+      </div>`;
+  }).join('');
+}
+
+// ── Puzdra type/element pills (axis names as element tags) ──
+function renderPuzPills(r) {
+  const host = document.getElementById('puz-type-pills');
+  if (!host) return;
+  // Show the 4 dominant trait names from the type code
+  const traits = [];
+  AXES.forEach(a => {
+    const isLeft = r.code.includes(a.codeA);
+    traits.push(isLeft ? a.nameA : a.nameB);
+  });
+  host.innerHTML = traits.map(t => `<span class="puz-type-pill">${t}</span>`).join('');
+}
+
+// ── Axis bar render (score 5-20, threshold at 12) ────────
+function renderAxisBars(axisScores) {
+  const container = document.getElementById('axis-result');
+  // score range 5-20 (5 questions × 1-4); fill% = (score-5)/15*100; threshold @ 46.67%
+  container.innerHTML = AXES.map(axis => {
+    const score = axisScores[axis.key];
+    const pct = Math.round(((score - 5) / 15) * 100);
+    const dominant = score <= 12 ? axis.codeA : axis.codeB;
+    const dominantName = score <= 12 ? axis.nameA : axis.nameB;
+    return `
+      <div class="axis-block">
+        <div class="axis-meta">
+          <span class="axis-left-label">${axis.codeA} · ${axis.nameA}</span>
+          <span class="axis-score-val">SCORE <strong>${score}/20</strong> → ${dominant}</span>
+          <span class="axis-right-label">${axis.nameB} · ${axis.codeB}</span>
+        </div>
+        <div class="axis-meter">
+          <div class="axis-fill" style="width:${pct}%"></div>
+          <div class="axis-mid"></div>
+          <div class="axis-threshold" title="判定境界 12 / 13"></div>
+        </div>
+        <div class="axis-scale">
+          <span>5</span><span>10</span><span>15</span><span>20</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Result render ────────────────────────────────────────
+function showResult() {
+  const r = calculateResult();
+  const axisScores = calculateAxisScores();
+
+  gaEvent('result_view', { type_code: r.code, type_name: r.creature });
+
+  // Apply per-type color theming (16personalities-style)
+  applyTypeTheme(r.color || '#6a5af9');
+
+  document.getElementById('page-quiz').style.display = 'none';
+  document.getElementById('page-result').style.display = 'flex';
+  const tbSheet = document.getElementById('tb-sheet');
+  if (tbSheet) tbSheet.textContent = 'RESULT · ' + r.code;
+
+  // CTA link
+  document.getElementById('cta-link').href = AWORKER_URL;
+
+  // Character visual
+  const img = document.getElementById('result-img');
+  const fallback = document.getElementById('result-emoji-fallback');
+  const candidates = [
+    `images/characters/${r.code.toLowerCase()}.png`,
+    `images/characters/${r.code.toLowerCase()}.webp`,
+    `images/characters/${r.code}.png`
+  ];
+  let ci = 0;
+  img.alt = r.creature;
+  img.onload = () => { img.style.display = ''; fallback.style.display = 'none'; };
+  img.onerror = () => {
+    ci++;
+    if (ci < candidates.length) { img.src = candidates[ci]; }
+    else { img.style.display = 'none'; fallback.style.display = ''; }
+  };
+  fallback.textContent = r.emoji;
+  fallback.style.display = '';
+  img.style.display = 'none';
+  img.src = candidates[0];
+
+  // Architecture photo for hero
+  const bgImg = document.getElementById('result-bg-img');
+  if (bgImg) bgImg.src = typePhotoURL(r.code, 1200);
+
+  // Code text in masthead + code strip
+  const codeSpaced = r.code.split('').join(' ');
+  document.getElementById('result-code-text').textContent = codeSpaced;
+  const codeText2 = document.getElementById('result-code-text-2');
+  if (codeText2) codeText2.textContent = codeSpaced;
+
+  // Type name — plain (not gradient text) for editorial readability
+  const nameEl = document.getElementById('result-name');
+  nameEl.textContent = r.creature;
+  nameEl.style.background = '';
+  nameEl.style.webkitBackgroundClip = '';
+  nameEl.style.webkitTextFillColor = '';
+  nameEl.style.backgroundClip = '';
+
+  document.getElementById('result-en').textContent = r.english;
+  document.getElementById('result-tagline').textContent = r.tagline;
+  document.getElementById('result-desc').textContent = r.description;
+
+  // Puzdra status bars (4 axes as RPG stats — like ATK/DEF/HP/SPD)
+  renderPuzStats(axisScores);
+  // Puzdra type/element pills
+  renderPuzPills(r);
+
+  renderAxisBars(axisScores);
+
+  document.getElementById('result-strengths').innerHTML =
+    r.strengths.map(s => `<div class="sw-item"><span class="sw-dot">▲</span><span class="sw-item-text">${s}</span></div>`).join('');
+  document.getElementById('result-weaknesses').innerHTML =
+    r.weaknesses.map(s => `<div class="sw-item"><span class="sw-dot">▼</span><span class="sw-item-text">${s}</span></div>`).join('');
+
+  document.getElementById('result-anecdotes').innerHTML =
+    r.archi_anecdotes.map(a => `<div class="anecdote-item">・${a}</div>`).join('');
+
+  document.getElementById('result-career').innerHTML =
+    r.career.filter(Boolean).map(c => `<div class="career-tag">${c}</div>`).join('');
+
+  document.getElementById('result-group-role').innerHTML =
+    r.group_role.map(g => `<div class="detail-item">${g}</div>`).join('');
+
+  document.getElementById('result-compat-good').innerHTML =
+    r.compatibility_good.map(g => `<div class="compat-item"><strong>${g.split('：')[0]}</strong><div>${g.split('：')[1] || ''}</div></div>`).join('');
+  document.getElementById('result-compat-bad').innerHTML =
+    r.compatibility_bad.map(g => `<div class="compat-item"><strong>${g.split('：')[0]}</strong><div>${g.split('：')[1] || ''}</div></div>`).join('');
+
+  setupShareButtons(r, axisScores);
+
+  setTimeout(() => {
+    document.getElementById('result-page').classList.add('visible');
+    if (window.__fx) {
+      window.__fx.activateResultWireframe();
+      window.__fx.activateResult();
+    }
+  }, 80);
+}
+
+// ── Share ────────────────────────────────────────────────
+function setupShareButtons(r, axisScores) {
+  const shareText = `【ARCHIme 建築タイプ診断】\n${r.emoji} ${r.creature}（${r.code}）\n${r.tagline}\n#ARCHIme #建築タイプ診断`;
+
+  document.getElementById('share-x').onclick = () => {
+    gaEvent('share', { method: 'twitter', type_code: r.code });
+    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText), '_blank', 'noopener');
+  };
+
+  document.getElementById('share-line').onclick = () => {
+    gaEvent('share', { method: 'line', type_code: r.code });
+    window.open('https://social-plugins.line.me/lineit/share?url=' + encodeURIComponent(location.href) + '&text=' + encodeURIComponent(shareText), '_blank', 'noopener');
+  };
+
+  document.getElementById('share-save').onclick = async () => {
+    const status = document.getElementById('share-status');
+    status.textContent = '画像を生成中…';
+    try {
+      const blob = await generateShareImage(r, axisScores);
+      if (!blob) throw new Error('failed');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `ARCHIme-${r.code}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status.textContent = '画像を保存しました！';
+      gaEvent('share', { method: 'save_image', type_code: r.code });
+    } catch {
+      status.textContent = '画像生成に失敗しました。';
+    }
+  };
+}
+
+async function generateShareImage(r, axisScores) {
+  const host = document.getElementById('share-card-canvas');
+  const axisHtml = AXES.map(axis => {
+    const score = axisScores[axis.key];
+    const pct = Math.round(((score - 5) / 15) * 100);
+    return `<div style="background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:16px 20px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:20px;color:#17394f;font-weight:700;margin-bottom:8px"><span>${axis.nameA}</span><span>${axis.nameB}</span></div>
+      <div style="height:16px;border-radius:999px;background:rgba(255,255,255,.4);overflow:hidden;position:relative">
+        <div style="position:absolute;inset:0 auto 0 0;width:${pct}%;border-radius:999px;background:linear-gradient(90deg,rgba(58,164,204,.95),rgba(255,206,102,.92))"></div>
+      </div></div>`;
+  }).join('');
+
+  host.innerHTML = `<div style="width:1080px;height:1350px;position:relative;overflow:hidden;font-family:'Hiragino Sans','Noto Sans JP',sans-serif;background:linear-gradient(180deg,#B8EDF5 0%,#8DDCEE 18%,#5BBFDF 42%,#3BA4CC 68%,#2A8CB8 100%)">
+    <div style="position:absolute;inset:70px;border-radius:48px;background:rgba(255,255,255,.20);border:1px solid rgba(255,255,255,.45);padding:68px 64px">
+      <div style="font-size:34px;font-weight:800;color:rgba(255,255,255,.94);letter-spacing:.20em">ARCHIme</div>
+      <div style="margin-top:14px;font-size:22px;color:rgba(255,255,255,.82);letter-spacing:.10em">建築タイプ診断</div>
+      <div style="display:inline-flex;margin-top:36px;padding:10px 18px;border-radius:999px;background:rgba(255,255,255,.24);border:1px solid rgba(255,255,255,.48);color:rgba(255,255,255,.92);font-size:22px;letter-spacing:.30em;font-weight:700">${r.code}</div>
+      <div style="margin-top:48px;font-size:140px;line-height:1">${r.emoji}</div>
+      <div style="margin-top:24px;font-size:64px;line-height:1.15;font-weight:900;color:#fff">${r.creature}</div>
+      <div style="margin-top:16px;font-size:26px;letter-spacing:.14em;color:rgba(255,255,255,.88)">${r.english}</div>
+      <div style="margin-top:28px;font-size:32px;line-height:1.6;color:#17394f;font-weight:700;background:rgba(255,255,255,.70);border-radius:24px;padding:24px 30px">${r.tagline}</div>
+      <div style="margin-top:36px">${axisHtml}</div>
+      <div style="position:absolute;bottom:58px;left:0;right:0;display:flex;justify-content:space-between;padding:0 64px;color:rgba(255,255,255,.88);font-size:20px">
+        <span>あなたの建築タイプ結果</span><span style="font-weight:700">#ARCHIme</span>
+      </div>
+    </div></div>`;
+
+  const stage = host.firstElementChild;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:1080px;height:1350px">${stage.outerHTML}</div></foreignObject></svg>`;
+  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080; canvas.height = 1350;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      canvas.toBlob(b => { URL.revokeObjectURL(url); resolve(b); }, 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+function restart() {
+  currentQ = 0; answers = {}; isAdvancing = false;
+  document.getElementById('result-page').classList.remove('visible');
+  document.getElementById('page-result').style.display = 'none';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('page-intro').style.display = 'flex';
+  const tbSheet = document.getElementById('tb-sheet');
+  if (tbSheet) tbSheet.textContent = '01 / 01';
+  if (window.__fx) window.__fx.deactivateResult();
+}
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     Three.js + GSAP + ScrollTrigger enhancements
+     - 3D wireframe octahedron in intro
+     - WebGL particle grid background
+     - Wireframe icosahedron behind result character
+     - GSAP intro entrance + ScrollTrigger result animations
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+window.addEventListener('load', () => {
+  const HAS_THREE = typeof THREE !== 'undefined';
+  const HAS_GSAP  = typeof gsap !== 'undefined';
+  const HAS_ST    = typeof ScrollTrigger !== 'undefined';
+  console.log('[ARCHIme FX] libs loaded:', { three: HAS_THREE, gsap: HAS_GSAP, scrollTrigger: HAS_ST });
+  if (HAS_GSAP && HAS_ST) gsap.registerPlugin(ScrollTrigger);
+
+  // Quick WebGL probe so we can fall back gracefully
+  let HAS_WEBGL = false;
+  try {
+    const probe = document.createElement('canvas');
+    HAS_WEBGL = !!(probe.getContext('webgl2') || probe.getContext('webgl') || probe.getContext('experimental-webgl'));
+  } catch (e) { HAS_WEBGL = false; }
+  console.log('[ARCHIme FX] WebGL available:', HAS_WEBGL);
+  const CAN_3D = HAS_THREE && HAS_WEBGL;
+  function safeRun(label, fn) {
+    try { fn(); }
+    catch (e) { console.warn('[ARCHIme FX] ' + label + ' failed:', e); }
+  }
+
+  // ── helpers ─────────────────────────────────────────────
+  function makeRenderer(canvas) {
+    const r = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    return r;
+  }
+  function fitToContainer(renderer, camera, container) {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+
+  // ── INTRO HERO: rotating wireframe octahedron compass ───
+  function initIntroHero() {
+    if (!CAN_3D) return;
+    const wrap = document.getElementById('intro-symbol');
+    if (!wrap) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'width:100%;height:100%;display:block;position:absolute;inset:0;';
+    wrap.style.position = 'relative';
+    wrap.appendChild(canvas);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    camera.position.z = 4;
+    const renderer = makeRenderer(canvas);
+    fitToContainer(renderer, camera, wrap);
+
+    // Inner wireframe octahedron — bright cyan
+    const octGeom = new THREE.OctahedronGeometry(1.0, 0);
+    const octWire = new THREE.LineSegments(
+      new THREE.WireframeGeometry(octGeom),
+      new THREE.LineBasicMaterial({ color: 0x30a6df, transparent: true, opacity: 1.0, linewidth: 2 })
+    );
+    scene.add(octWire);
+
+    // Filled translucent inner mesh — gives subtle glow
+    const octFill = new THREE.Mesh(
+      octGeom,
+      new THREE.MeshBasicMaterial({ color: 0x1a7faf, transparent: true, opacity: 0.10, side: THREE.DoubleSide })
+    );
+    scene.add(octFill);
+
+    // Vertex dots (architectural pin marks)
+    const vertPos = new Float32Array(octGeom.attributes.position.array);
+    const vertGeom = new THREE.BufferGeometry();
+    vertGeom.setAttribute('position', new THREE.BufferAttribute(vertPos, 3));
+    const dots = new THREE.Points(vertGeom, new THREE.PointsMaterial({
+      color: 0x1a7faf, size: 0.18, sizeAttenuation: true,
+      transparent: true, opacity: 1.0
+    }));
+    scene.add(dots);
+
+    // Outer icosahedron (sparse wireframe, slower rotation)
+    const icoGeom = new THREE.IcosahedronGeometry(1.7, 0);
+    const icoWire = new THREE.LineSegments(
+      new THREE.WireframeGeometry(icoGeom),
+      new THREE.LineBasicMaterial({ color: 0x1a7faf, transparent: true, opacity: 0.55 })
+    );
+    scene.add(icoWire);
+
+    // Outermost dashed ring
+    const ringGeom = new THREE.TorusGeometry(2.0, 0.015, 4, 80);
+    const ring = new THREE.Mesh(
+      ringGeom,
+      new THREE.MeshBasicMaterial({ color: 0x30a6df, transparent: true, opacity: 0.7 })
+    );
+    scene.add(ring);
+
+    // Center accent: red pivot dot
+    scene.add(new THREE.Mesh(
+      new THREE.SphereGeometry(0.10, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xff6b78 })
+    ));
+
+    // Hide SVG fallback once canvas is up
+    const svg = wrap.querySelector('svg');
+    if (svg) svg.style.display = 'none';
+
+    function tick() {
+      octWire.rotation.x += 0.008;
+      octWire.rotation.y += 0.012;
+      octFill.rotation.x = octWire.rotation.x;
+      octFill.rotation.y = octWire.rotation.y;
+      dots.rotation.x = octWire.rotation.x;
+      dots.rotation.y = octWire.rotation.y;
+      icoWire.rotation.x -= 0.004;
+      icoWire.rotation.z += 0.006;
+      ring.rotation.x += 0.003;
+      ring.rotation.y += 0.002;
+      renderer.render(scene, camera);
+      requestAnimationFrame(tick);
+    }
+    tick();
+
+    new ResizeObserver(() => fitToContainer(renderer, camera, wrap)).observe(wrap);
+  }
+
+  // ── BG PARTICLE FIELD: cyan dots reacting to mouse ──────
+  function initBgParticles() {
+    if (!CAN_3D) return;
+    const canvas = document.createElement('canvas');
+    canvas.id = 'bg-particles';
+    document.body.appendChild(canvas);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.z = 32;
+    const renderer = makeRenderer(canvas);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    // Grid of particles
+    const count = 320;
+    const positions = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      positions[i*3+0] = (Math.random() - 0.5) * 70;
+      positions[i*3+1] = (Math.random() - 0.5) * 60;
+      positions[i*3+2] = (Math.random() - 0.5) * 40;
+    }
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const points = new THREE.Points(geom, new THREE.PointsMaterial({
+      color: 0x1a7faf, size: 0.10, sizeAttenuation: true,
+      transparent: true, opacity: 0.55
+    }));
+    scene.add(points);
+
+    let targetX = 0, targetY = 0, camX = 0, camY = 0;
+    window.addEventListener('pointermove', (e) => {
+      targetX = (e.clientX / window.innerWidth  - 0.5) * 1.6;
+      targetY = (e.clientY / window.innerHeight - 0.5) * 1.6;
+    });
+
+    function tick() {
+      camX += (targetX - camX) * 0.04;
+      camY += (-targetY - camY) * 0.04;
+      camera.position.x = camX;
+      camera.position.y = camY;
+      camera.lookAt(scene.position);
+      points.rotation.y += 0.0006;
+      points.rotation.x += 0.0002;
+      renderer.render(scene, camera);
+      requestAnimationFrame(tick);
+    }
+    tick();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  }
+
+  // ── RESULT WIREFRAME FRAME (behind character emoji) ────
+  let resultWf = null;
+  function initResultWireframe() {
+    if (!CAN_3D) return;
+    if (resultWf) return;
+    const wrap = document.getElementById('result-elevation');
+    if (!wrap) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'wireframe-canvas';
+    wrap.appendChild(canvas);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    camera.position.z = 4;
+    const renderer = makeRenderer(canvas);
+    fitToContainer(renderer, camera, wrap);
+
+    const ico = new THREE.LineSegments(
+      new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(1.55, 1)),
+      new THREE.LineBasicMaterial({ color: 0x30a6df, transparent: true, opacity: 0.72 })
+    );
+    scene.add(ico);
+
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(1.95, 0.018, 6, 96),
+      new THREE.MeshBasicMaterial({ color: 0x1a7faf, transparent: true, opacity: 0.85 })
+    );
+    scene.add(ring);
+
+    const ringInner = new THREE.Mesh(
+      new THREE.TorusGeometry(1.45, 0.008, 4, 64),
+      new THREE.MeshBasicMaterial({ color: 0x30a6df, transparent: true, opacity: 0.6 })
+    );
+    scene.add(ringInner);
+
+    function tick() {
+      if (!resultWf) return;
+      ico.rotation.x += 0.005;
+      ico.rotation.y += 0.007;
+      ring.rotation.x += 0.003;
+      ring.rotation.z -= 0.002;
+      ringInner.rotation.x -= 0.004;
+      ringInner.rotation.y += 0.003;
+      renderer.render(scene, camera);
+      requestAnimationFrame(tick);
+    }
+    resultWf = { canvas, renderer };
+    tick();
+
+    new ResizeObserver(() => fitToContainer(renderer, camera, wrap)).observe(wrap);
+  }
+
+  // ── GSAP entrance for intro (16p layout) — scoped to #page-intro only
+  function animateIntro() {
+    if (!HAS_GSAP) return;
+    const targets = [
+      '#page-intro .hero-16p-title',
+      '#page-intro .hero-16p-sub',
+      '#page-intro #btn-start',
+      '#page-intro .hero-16p-meta',
+      '#page-intro .hero-16p-visual'
+    ].filter(sel => document.querySelector(sel));
+    if (!targets.length) return;
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out', duration: 0.7 } });
+    targets.forEach((sel, i) => {
+      tl.fromTo(sel, { opacity: 0, y: 24 }, { opacity: 1, y: 0 }, i === 0 ? 0 : '-=.45');
+    });
+  }
+
+  // ── ScrollTrigger animations on RESULT page ─────────────
+  let stList = [];
+  function killSTs() {
+    stList.forEach(t => { try { t.kill(); } catch(_){} });
+    stList = [];
+    if (HAS_ST) ScrollTrigger.refresh();
+  }
+  function activateResultST() {
+    if (!HAS_GSAP || !HAS_ST) return;
+    killSTs();
+
+    // 1. Section reveal: sections fade up as they enter viewport.
+    // immediateRender:false ensures elements stay visible if ScrollTrigger never fires.
+    const revealTargets = document.querySelectorAll(
+      '#page-result .result-section, #page-result .sw-grid, #page-result .cta-inline, #page-result .share-section, #page-result #btn-restart'
+    );
+    revealTargets.forEach(el => {
+      const tween = gsap.fromTo(el,
+        { opacity: 0, y: 36 },
+        {
+          opacity: 1, y: 0, duration: 0.9, ease: 'power3.out',
+          immediateRender: false,
+          scrollTrigger: {
+            trigger: el, start: 'top 90%',
+            toggleActions: 'play none none none',
+            once: true
+          }
+        }
+      );
+      if (tween.scrollTrigger) stList.push(tween.scrollTrigger);
+    });
+
+    // 2. Axis-bar scrub: bars draw from 0 → final width as TYPE BALANCE enters
+    document.querySelectorAll('#page-result .axis-fill').forEach(bar => {
+      const final = bar.style.width || '50%';
+      const tween = gsap.fromTo(bar,
+        { width: '0%' },
+        {
+          width: final,
+          duration: 1.4, ease: 'power2.out',
+          immediateRender: false,
+          scrollTrigger: {
+            trigger: bar.closest('.axis-block'),
+            start: 'top 90%',
+            toggleActions: 'play none none none',
+            once: true
+          }
+        }
+      );
+      if (tween.scrollTrigger) stList.push(tween.scrollTrigger);
+    });
+
+    // 3. Hero parallax: subtle Y drift as user scrolls past
+    const heroTween = gsap.to('#result-hero', {
+      y: -60, ease: 'none',
+      scrollTrigger: {
+        trigger: '#result-hero',
+        start: 'top top', end: 'bottom 30%',
+        scrub: 0.6
+      }
+    });
+    if (heroTween.scrollTrigger) stList.push(heroTween.scrollTrigger);
+
+    // 4. Background particle parallax (subtle scroll-linked rotation)
+    const particles = document.getElementById('bg-particles');
+    if (particles) {
+      const bgTween = gsap.to(particles, {
+        scale: 1.08, ease: 'none',
+        scrollTrigger: {
+          trigger: '#page-result',
+          start: 'top top', end: 'bottom bottom',
+          scrub: 1
+        }
+      });
+      if (bgTween.scrollTrigger) stList.push(bgTween.scrollTrigger);
+    }
+
+    // (Removed delayed hero reveals — hero is always visible immediately)
+
+    setTimeout(() => HAS_ST && ScrollTrigger.refresh(), 200);
+  }
+
+  // ── SCROLL PROGRESS BAR (right edge) ───────────────────
+  function initScrollProgress() {
+    const fill = document.getElementById('scroll-progress');
+    if (!fill) return;
+    function update() {
+      const h = document.documentElement;
+      const max = h.scrollHeight - h.clientHeight;
+      const pct = max > 0 ? (h.scrollTop / max) * 100 : 0;
+      fill.style.height = pct + '%';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  }
+
+  // ── EXPOSE HOOKS + BOOT ─────────────────────────────────
+  window.__fx = {
+    activateResult: activateResultST,
+    deactivateResult: killSTs,
+    activateResultWireframe: initResultWireframe
+  };
+
+  safeRun('scrollProgress', initScrollProgress);
+  safeRun('bgParticles',    initBgParticles);
+  safeRun('introHero',      initIntroHero);
+  safeRun('animateIntro',   animateIntro);
+
+  // Safety net: if GSAP failed to complete animations (e.g., paused tab, network glitch),
+  // force any elements stuck at opacity:0 to become visible after 3s.
+  setTimeout(() => {
+    document.querySelectorAll(
+      '#intro-symbol, #intro-badge, #intro-title, #intro-sub, #intro-desc, #btn-start, #intro-note, ' +
+      '#page-result .result-section, #page-result .sw-grid, #page-result .cta-inline, #page-result .share-section, #page-result #btn-restart'
+    ).forEach(el => {
+      const op = parseFloat(getComputedStyle(el).opacity);
+      if (op < 0.1) {
+        el.style.opacity = '';
+        el.style.transform = '';
+        el.style.translate = el.style.rotate = el.style.scale = '';
+      }
+    });
+  }, 3000);
+});
+</script>
+</body>
+</html>
